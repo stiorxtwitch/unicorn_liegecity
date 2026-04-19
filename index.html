@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vanilla Unicorn — Le Club | Liège City RP</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Josefin+Sans:wght@300;400;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --uc-violet:    #7b2fff;
+  --uc-mauve:     #b44fff;
+  --uc-rose:      #ff4fd8;
+  --uc-pink:      #ff80e8;
+  --uc-gold:      #ffd700;
+  --uc-gold-dim:  #c9a227;
+  --uc-blue:      #1a0535;
+  --uc-deep:      #0d0020;
+  --uc-panel:     #130030;
+  --uc-card:      #180035;
+  --text-light:   #f0e6ff;
+  --text-dim:     #9977cc;
+  --grad-magic:   linear-gradient(135deg, var(--uc-violet), var(--uc-rose));
+  --grad-gold:    linear-gradient(135deg, var(--uc-gold), #ff9d00, var(--uc-gold));
+  --grad-fantasy: linear-gradient(135deg, #7b2fff, #b44fff, #ff4fd8);
+  --glow-violet:  0 0 24px rgba(123,47,255,0.7), 0 0 48px rgba(123,47,255,0.3);
+  --glow-rose:    0 0 24px rgba(255,79,216,0.7), 0 0 48px rgba(255,79,216,0.3);
+  --glow-gold:    0 0 20px rgba(255,215,0,0.6),  0 0 40px rgba(255,215,0,0.25);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--uc-deep);
+  color: var(--text-light);
+  font-family: 'Quicksand', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Fond étoilé animé */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(123,47,255,0.18) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 90%, rgba(255,79,216,0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 60% 40%, rgba(180,79,255,0.08) 0%, transparent 35%);
+  pointer-events: none; z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255,215,0,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 60%, rgba(255,128,232,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 10%, rgba(255,215,0,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 80%, rgba(123,47,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 30%, rgba(255,215,0,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 90%, rgba(255,128,232,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 55%, rgba(255,215,0,0.5) 0%, transparent 100%);
+  pointer-events: none; z-index: 0;
+  animation: twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes twinkle {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+/* Particules magiques flottantes */
+.magic-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  font-size: 1rem;
+  animation: floatUp linear infinite;
+  opacity: 0;
+}
+@keyframes floatUp {
+  0%   { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.7; }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+}
+
+/* ===== MUSIC PLAYER ===== */
+#music-player {
+  position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 9000;
+  background: rgba(19,0,48,0.95);
+  border: 1px solid rgba(180,79,255,0.35);
+  border-radius: 50px; padding: 8px 16px 8px 10px;
+  display: flex; align-items: center; gap: 10px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 20px rgba(123,47,255,0.15), 0 4px 24px rgba(0,0,0,0.6);
+  transition: all 0.3s ease; min-width: 48px; overflow: hidden;
+}
+#music-player.collapsed { padding: 8px 10px; border-radius: 50%; width: 48px; height: 48px; min-width: 48px; }
+#music-player.collapsed #player-controls, #music-player.collapsed #volume-area { display: none; }
+
+#music-toggle-btn {
+  background: none; border: none; cursor: pointer; font-size: 1.25rem;
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0; transition: transform 0.2s;
+  filter: drop-shadow(0 0 6px rgba(180,79,255,0.8));
+}
+#music-toggle-btn:hover { transform: scale(1.15) rotate(10deg); }
+
+#player-controls { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+
+.player-label {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--uc-pink); white-space: nowrap;
+  max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+}
+.player-play-btn {
+  background: none; border: 1px solid rgba(180,79,255,0.4); border-radius: 50%;
+  width: 26px; height: 26px; color: var(--uc-mauve); font-size: 0.7rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.player-play-btn:hover { background: rgba(180,79,255,0.15); box-shadow: var(--glow-violet); }
+
+#volume-area { display: flex; align-items: center; gap: 6px; }
+.vol-icon { font-size: 0.85rem; color: var(--text-dim); flex-shrink: 0; }
+
+#volume-slider {
+  -webkit-appearance: none; appearance: none; width: 80px; height: 3px;
+  background: linear-gradient(to right, var(--uc-mauve) var(--vol-pct,30%), rgba(180,79,255,0.15) var(--vol-pct,30%));
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+#volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--uc-mauve); box-shadow: 0 0 6px rgba(180,79,255,0.9);
+  cursor: pointer; transition: transform 0.15s;
+}
+#volume-slider::-webkit-slider-thumb:hover { transform: scale(1.3); }
+#volume-slider::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--uc-mauve); border: none;
+}
+
+.eq-bars { display: flex; align-items: flex-end; gap: 2px; height: 16px; flex-shrink: 0; }
+.eq-bar { width: 3px; border-radius: 1px; background: var(--uc-rose); animation: eq-bounce 0.8s ease-in-out infinite; }
+.eq-bar:nth-child(1) { animation-delay:0s; animation-duration:0.7s; }
+.eq-bar:nth-child(2) { animation-delay:0.15s; animation-duration:0.9s; }
+.eq-bar:nth-child(3) { animation-delay:0.05s; animation-duration:0.65s; }
+.eq-bar:nth-child(4) { animation-delay:0.25s; animation-duration:0.8s; }
+@keyframes eq-bounce { 0%,100%{height:4px;opacity:0.5} 50%{height:14px;opacity:1} }
+.eq-bars.paused .eq-bar { animation-play-state:paused; height:4px; opacity:0.3; }
+
+#yt-player-container { position:fixed; top:-9999px; left:-9999px; width:1px; height:1px; visibility:hidden; pointer-events:none; }
+
+/* ===== NAVBAR ===== */
+#navbar {
+  position: fixed; top:0; left:0; right:0; z-index: 1000;
+  background: rgba(13,0,32,0.97); backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(180,79,255,0.2);
+  padding: 0 2rem; display: flex; align-items: center;
+  justify-content: space-between; height: 70px;
+}
+
+.nav-logo { display:flex; align-items:center; gap:10px; cursor:pointer; text-decoration:none; }
+.nav-logo-icon { font-size: 1.8rem; filter: drop-shadow(0 0 10px rgba(255,215,0,0.8)); animation: unicorn-glow 3s ease-in-out infinite; }
+@keyframes unicorn-glow {
+  0%,100% { filter: drop-shadow(0 0 8px rgba(255,215,0,0.6)); }
+  50% { filter: drop-shadow(0 0 18px rgba(255,79,216,0.9)); }
+}
+.nav-logo-text {
+  font-family: 'Cinzel Decorative', serif; font-size: 0.95rem; font-weight: 900;
+  background: var(--grad-gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+}
+.nav-logo-sub {
+  font-family: 'Josefin Sans', sans-serif; font-size: 0.55rem; font-weight: 300;
+  letter-spacing: 4px; color: var(--uc-mauve); text-transform: uppercase;
+  display: block; margin-top: -2px;
+}
+
+.nav-links { display:flex; gap:0.2rem; list-style:none; }
+.nav-links a {
+  color: var(--text-dim); text-decoration: none; font-weight: 700; font-size: 0.82rem;
+  letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 16px;
+  border-radius: 4px; transition: all 0.3s; cursor: pointer;
+  font-family: 'Josefin Sans', sans-serif;
+}
+.nav-links a:hover, .nav-links a.active {
+  color: var(--uc-pink); background: rgba(255,79,216,0.08);
+  text-shadow: 0 0 12px rgba(255,79,216,0.6);
+}
+
+.nav-right { display:flex; align-items:center; gap:1rem; }
+#login-btn {
+  background: transparent; border: 1px solid var(--uc-gold); color: var(--uc-gold);
+  font-family: 'Josefin Sans', sans-serif; font-weight: 700; font-size: 0.78rem;
+  letter-spacing: 2px; text-transform: uppercase; padding: 8px 20px; border-radius: 4px;
+  cursor: pointer; transition: all 0.3s;
+}
+#login-btn:hover { background: var(--uc-gold); color: var(--uc-deep); box-shadow: var(--glow-gold); }
+
+/* ===== PAGES ===== */
+.page { display:none; padding-top:70px; min-height:100vh; position:relative; z-index:1; }
+.page.active { display:block; }
+
+/* ===== HERO ===== */
+.hero {
+  min-height: calc(100vh - 70px); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; padding:4rem 2rem;
+  position: relative;
+}
+
+.hero-crown {
+  font-size: 5rem; margin-bottom: 0.5rem;
+  animation: float-crown 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 30px rgba(255,215,0,0.8));
+}
+@keyframes float-crown {
+  0%,100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-14px) rotate(3deg); }
+}
+
+.hero-title {
+  font-family: 'Cinzel Decorative', serif; font-size: clamp(2rem, 6vw, 4.5rem);
+  font-weight: 900; background: var(--grad-gold); -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; letter-spacing: 4px; line-height: 1.15;
+  margin-bottom: 0.5rem; text-shadow: none;
+  filter: drop-shadow(0 2px 20px rgba(255,215,0,0.4));
+}
+.hero-title-sub {
+  font-family: 'Cinzel Decorative', serif; font-size: clamp(0.9rem, 2.5vw, 1.4rem);
+  font-weight: 700; background: var(--grad-magic); -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; letter-spacing: 6px; margin-bottom: 0.8rem;
+}
+
+.hero-tagline {
+  font-family: 'Josefin Sans', sans-serif; font-size: 0.95rem; color: var(--uc-mauve);
+  letter-spacing: 4px; text-transform: uppercase; margin-bottom: 2.5rem;
+}
+
+.hero-actions { display:flex; gap:1rem; flex-wrap:wrap; justify-content:center; }
+
+.btn-primary {
+  background: var(--grad-gold); color: var(--uc-deep);
+  font-family: 'Josefin Sans', sans-serif; font-weight: 700; font-size: 0.9rem;
+  letter-spacing: 2px; text-transform: uppercase; padding: 14px 32px; border:none;
+  border-radius: 4px; cursor:pointer; transition:all 0.3s; box-shadow: var(--glow-gold);
+}
+.btn-primary:hover { transform:translateY(-2px); filter:brightness(1.15); }
+
+.btn-outline {
+  background: transparent; color: var(--uc-pink);
+  font-family: 'Josefin Sans', sans-serif; font-weight: 700; font-size: 0.9rem;
+  letter-spacing: 2px; text-transform: uppercase; padding: 14px 32px;
+  border: 1px solid var(--uc-rose); border-radius: 4px; cursor:pointer; transition:all 0.3s;
+}
+.btn-outline:hover { background:rgba(255,79,216,0.1); box-shadow:var(--glow-rose); transform:translateY(-2px); }
+
+.next-event-banner {
+  margin-top: 3rem;
+  background: rgba(19,0,48,0.92);
+  border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 16px; padding: 2rem 3rem; max-width: 650px; width:100%;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 30px rgba(255,215,0,0.06), inset 0 0 30px rgba(123,47,255,0.04);
+}
+.neb-label { font-size:0.7rem; letter-spacing:4px; color:var(--uc-gold); text-transform:uppercase; margin-bottom:0.5rem; font-family:'Josefin Sans',sans-serif; }
+.neb-title { font-family:'Cinzel Decorative',serif; font-size:1.3rem; color:#fff; margin-bottom:0.4rem; }
+.neb-date { color:var(--uc-pink); font-size:0.95rem; letter-spacing:2px; font-family:'Josefin Sans',sans-serif; }
+
+/* ===== SECTIONS ===== */
+.section { padding:5rem 2rem; max-width:1200px; margin:0 auto; }
+.section-title {
+  font-family:'Cinzel Decorative',serif; font-size:1.6rem; font-weight:900;
+  background:var(--grad-gold); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  letter-spacing:3px; margin-bottom:2.5rem; text-align:center;
+}
+
+/* ===== CARDS ANNONCES ===== */
+.annonces-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1.5rem; }
+.annonce-card {
+  background:var(--uc-card); border:1px solid rgba(180,79,255,0.18);
+  border-radius:16px; overflow:hidden; transition:all 0.3s;
+}
+.annonce-card:hover { border-color:var(--uc-mauve); box-shadow:0 0 35px rgba(180,79,255,0.12); transform:translateY(-3px); }
+.annonce-img-placeholder {
+  width:100%; height:180px; background:var(--grad-fantasy);
+  display:flex; align-items:center; justify-content:center; font-size:3rem;
+}
+.annonce-img { width:100%; height:180px; object-fit:cover; }
+.annonce-body { padding:1.4rem; }
+.annonce-type { font-size:0.65rem; letter-spacing:3px; text-transform:uppercase; color:var(--uc-gold); margin-bottom:0.4rem; font-family:'Josefin Sans',sans-serif; }
+.annonce-title { font-size:1.15rem; font-weight:700; color:#fff; margin-bottom:0.4rem; }
+.annonce-text { color:var(--text-dim); font-size:0.88rem; line-height:1.55; }
+.annonce-date { color:var(--uc-pink); font-size:0.78rem; margin-top:0.8rem; letter-spacing:1px; }
+
+/* ===== ALBUMS ===== */
+.albums-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1.5rem; }
+.album-card {
+  background:var(--uc-card); border:1px solid rgba(255,215,0,0.2);
+  border-radius:16px; overflow:hidden; cursor:pointer; transition:all 0.3s;
+}
+.album-card:hover { border-color:var(--uc-gold); box-shadow:var(--glow-gold); transform:translateY(-3px); }
+.album-cover { height:150px; background:linear-gradient(135deg,#1a0040,#3a0060); display:flex; align-items:center; justify-content:center; font-size:3rem; }
+.album-cover img { width:100%; height:100%; object-fit:cover; }
+.album-info { padding:1rem 1.4rem; }
+.album-name { font-weight:700; font-size:1rem; margin-bottom:0.3rem; font-family:'Josefin Sans',sans-serif; }
+.album-count { color:var(--text-dim); font-size:0.82rem; }
+
+.photos-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:1rem; }
+.photo-item { border-radius:12px; overflow:hidden; aspect-ratio:1; background:var(--uc-card); cursor:pointer; transition:transform 0.3s; }
+.photo-item:hover { transform:scale(1.04); box-shadow:0 0 20px rgba(255,215,0,0.2); }
+.photo-item img { width:100%; height:100%; object-fit:cover; }
+
+/* ===== MENU PUBLIC ===== */
+.menu-section-title {
+  font-family:'Cinzel Decorative',serif; font-size:0.8rem; letter-spacing:3px;
+  text-transform:uppercase; color:var(--uc-gold); border-bottom:1px solid rgba(255,215,0,0.2);
+  padding-bottom:0.6rem; margin:2rem 0 1.2rem;
+}
+.menu-grid-items { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+.menu-card {
+  background:var(--uc-card); border:1px solid rgba(180,79,255,0.12);
+  border-radius:16px; padding:1.3rem 1rem; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:0.45rem;
+  pointer-events:none; user-select:none; transition:border-color 0.3s;
+}
+.menu-card-emoji { font-size:2.4rem; line-height:1; }
+.menu-card-nom { font-size:0.9rem; font-weight:700; color:var(--text-light); font-family:'Josefin Sans',sans-serif; }
+.menu-card-prix {
+  font-size:0.85rem; color:var(--uc-gold); font-weight:700; letter-spacing:1px;
+  background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.25);
+  border-radius:20px; padding:2px 10px; margin-top:0.2rem;
+}
+.menu-filter-bar { display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:center; margin-bottom:2.5rem; }
+
+/* ===== MODALS ===== */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.88); backdrop-filter:blur(12px);
+  z-index:2000; align-items:center; justify-content:center; padding:1rem;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--uc-panel); border:1px solid rgba(180,79,255,0.25);
+  border-radius:20px; padding:2.5rem; max-width:480px; width:100%;
+  position:relative; max-height:90vh; overflow-y:auto;
+  box-shadow:0 0 60px rgba(123,47,255,0.15);
+}
+.modal-lg { max-width:780px; }
+.modal-close {
+  position:absolute; top:1rem; right:1rem; background:transparent; border:none;
+  color:var(--text-dim); font-size:1.4rem; cursor:pointer; transition:color 0.2s;
+}
+.modal-close:hover { color:var(--uc-rose); }
+.modal-title {
+  font-family:'Cinzel Decorative',serif; font-size:1.1rem; margin-bottom:1.8rem;
+  background:var(--grad-gold); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+
+/* ===== FORMS ===== */
+.form-group { margin-bottom:1.1rem; }
+.form-label { display:block; font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.4rem; font-family:'Josefin Sans',sans-serif; }
+.form-input, .form-select, .form-textarea {
+  width:100%; background:rgba(0,0,0,0.5); border:1px solid rgba(180,79,255,0.25);
+  border-radius:8px; color:var(--text-light); font-family:'Quicksand',sans-serif;
+  font-size:1rem; padding:11px 14px; outline:none; transition:border-color 0.3s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color:var(--uc-mauve); box-shadow:0 0 10px rgba(180,79,255,0.15);
+}
+.form-select option { background:#130030; }
+.form-textarea { min-height:90px; resize:vertical; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+
+.btn-full { width:100%; }
+.btn-sm { padding:7px 14px; font-size:0.78rem; }
+.btn-danger {
+  background:transparent; color:var(--uc-rose); border:1px solid var(--uc-rose);
+  font-family:'Josefin Sans',sans-serif; font-weight:700; font-size:0.78rem;
+  letter-spacing:1px; text-transform:uppercase; padding:7px 14px; border-radius:4px;
+  cursor:pointer; transition:all 0.3s;
+}
+.btn-danger:hover { background:var(--uc-rose); color:#fff; }
+.btn-success {
+  background:transparent; color:#a0ffcc; border:1px solid #a0ffcc;
+  font-family:'Josefin Sans',sans-serif; font-weight:700; font-size:0.78rem;
+  letter-spacing:1px; text-transform:uppercase; padding:7px 14px; border-radius:4px;
+  cursor:pointer; transition:all 0.3s;
+}
+.btn-success:hover { background:#a0ffcc; color:#000; }
+
+/* ===== TOAST ===== */
+#toast-container { position:fixed; bottom:2rem; right:2rem; z-index:9999; display:flex; flex-direction:column; gap:0.5rem; }
+.toast {
+  background:var(--uc-panel); border-radius:10px; padding:1rem 1.4rem;
+  font-size:0.88rem; font-weight:600; animation:slideIn 0.3s ease; max-width:280px;
+  font-family:'Josefin Sans',sans-serif;
+}
+.toast.success { border-left:3px solid var(--uc-gold);   color:var(--uc-gold); }
+.toast.error   { border-left:3px solid var(--uc-rose);   color:var(--uc-rose); }
+.toast.info    { border-left:3px solid var(--uc-mauve);  color:var(--uc-mauve); }
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* ===== DASHBOARD ===== */
+.dashboard-header {
+  background:rgba(13,0,32,0.98); border-bottom:1px solid rgba(180,79,255,0.15);
+  padding:1.5rem 2rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;
+}
+.dashboard-welcome { font-family:'Cinzel Decorative',serif; font-size:0.95rem; color:var(--uc-gold); }
+.dashboard-role { font-size:0.68rem; letter-spacing:3px; text-transform:uppercase; color:var(--text-dim); margin-top:2px; font-family:'Josefin Sans',sans-serif; }
+.dashboard-content { padding:2rem; max-width:1200px; margin:0 auto; }
+
+/* TABS */
+.tabs { display:flex; gap:0.2rem; margin-bottom:2rem; flex-wrap:wrap; border-bottom:1px solid rgba(180,79,255,0.15); padding-bottom:0; }
+.tab-btn {
+  background:transparent; border:none; border-bottom:2px solid transparent;
+  color:var(--text-dim); font-family:'Josefin Sans',sans-serif; font-weight:700;
+  font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; padding:10px 18px;
+  cursor:pointer; transition:all 0.3s; margin-bottom:-1px;
+}
+.tab-btn:hover { color:var(--text-light); }
+.tab-btn.active { color:var(--uc-gold); border-bottom-color:var(--uc-gold); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* STATS */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:1rem; margin-bottom:2rem; }
+.stat-card { background:var(--uc-card); border:1px solid rgba(180,79,255,0.12); border-radius:14px; padding:1.4rem; text-align:center; }
+.stat-value {
+  font-family:'Cinzel Decorative',serif; font-size:1.7rem; font-weight:900;
+  background:var(--grad-gold); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.stat-label { color:var(--text-dim); font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; margin-top:0.4rem; font-family:'Josefin Sans',sans-serif; }
+
+/* SOIREE CARDS */
+.soirees-list { display:flex; flex-direction:column; gap:1rem; }
+.soiree-card {
+  background:var(--uc-card); border:1px solid rgba(180,79,255,0.15); border-radius:14px;
+  padding:1.4rem; display:flex; align-items:center; gap:1.4rem; flex-wrap:wrap;
+}
+.soiree-card:hover { border-color:rgba(255,215,0,0.35); }
+.soiree-date-badge {
+  background:var(--grad-gold); color:var(--uc-deep); border-radius:10px;
+  padding:0.7rem 1rem; text-align:center; min-width:72px; flex-shrink:0;
+}
+.sdb-day { font-family:'Cinzel Decorative',serif; font-size:1.3rem; font-weight:900; line-height:1; }
+.sdb-month { font-size:0.6rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; font-family:'Josefin Sans',sans-serif; }
+.soiree-info { flex:1; min-width:150px; }
+.soiree-name { font-size:1.1rem; font-weight:700; margin-bottom:0.25rem; }
+.soiree-meta { color:var(--text-dim); font-size:0.82rem; }
+.soiree-status { padding:4px 12px; border-radius:20px; font-size:0.68rem; letter-spacing:2px; text-transform:uppercase; font-weight:700; font-family:'Josefin Sans',sans-serif; }
+.status-planifiee { background:rgba(255,215,0,0.07);  color:var(--uc-gold);  border:1px solid rgba(255,215,0,0.25); }
+.status-en_cours  { background:rgba(160,255,204,0.07); color:#a0ffcc; border:1px solid rgba(160,255,204,0.25); animation:blink 1.2s infinite; }
+.status-terminee  { background:rgba(153,119,204,0.07); color:var(--text-dim); border:1px solid rgba(153,119,204,0.2); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.soiree-actions { display:flex; gap:0.5rem; flex-wrap:wrap; }
+
+/* SERVICE */
+.service-panel {
+  background:var(--uc-card); border:1px solid rgba(180,79,255,0.25);
+  border-radius:18px; padding:2rem; text-align:center; margin-bottom:2rem;
+}
+.service-timer {
+  font-family:'Cinzel Decorative',serif; font-size:2.8rem; font-weight:900;
+  color:var(--uc-gold); text-shadow:var(--glow-gold); letter-spacing:4px; margin:1rem 0;
+}
+.service-status { color:var(--text-dim); font-size:0.82rem; letter-spacing:2px; margin-bottom:1.4rem; font-family:'Josefin Sans',sans-serif; }
+
+/* COMPTEUR SECURITE */
+.counter-panel {
+  background:var(--uc-card); border:1px solid rgba(255,215,0,0.2);
+  border-radius:18px; padding:2rem; text-align:center; margin-bottom:2rem;
+}
+.counter-display {
+  font-family:'Cinzel Decorative',serif; font-size:5rem; font-weight:900;
+  background:var(--grad-gold); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  line-height:1; margin:1rem 0;
+}
+.counter-buttons { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin-top:1.4rem; }
+.counter-btn {
+  font-family:'Cinzel Decorative',serif; font-size:1.3rem; font-weight:900;
+  width:78px; height:78px; border-radius:50%; border:2px solid; cursor:pointer; transition:all 0.2s; background:transparent;
+}
+.counter-btn.plus  { border-color:var(--uc-gold);   color:var(--uc-gold); }
+.counter-btn.plus:hover  { background:var(--uc-gold);  color:var(--uc-deep); box-shadow:var(--glow-gold); }
+.counter-btn.minus { border-color:var(--uc-rose);  color:var(--uc-rose); }
+.counter-btn.minus:hover { background:var(--uc-rose); color:#fff; box-shadow:var(--glow-rose); }
+.counter-btn.vip   { border-color:var(--uc-mauve); color:var(--uc-mauve); font-size:0.7rem; width:78px; height:78px; border-radius:10px; }
+.counter-btn.vip:hover   { background:var(--uc-mauve); color:#fff; box-shadow:var(--glow-violet); }
+
+/* CAISSE */
+.caisse-grid { display:grid; grid-template-columns:1fr 360px; gap:1.4rem; }
+@media(max-width:900px){ .caisse-grid{grid-template-columns:1fr;} }
+.produits-panel { background:var(--uc-card); border:1px solid rgba(180,79,255,0.15); border-radius:14px; padding:1.4rem; }
+.produit-categories { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+.cat-btn {
+  background:transparent; border:1px solid rgba(180,79,255,0.25); color:var(--text-dim);
+  font-family:'Josefin Sans',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+  padding:4px 13px; border-radius:20px; cursor:pointer; transition:all 0.2s;
+}
+.cat-btn.active, .cat-btn:hover { border-color:var(--uc-gold); color:var(--uc-gold); background:rgba(255,215,0,0.07); }
+.produits-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:0.7rem; }
+.produit-btn {
+  background:rgba(0,0,0,0.35); border:1px solid rgba(180,79,255,0.1); border-radius:12px;
+  padding:0.9rem 0.7rem; text-align:center; cursor:pointer; transition:all 0.2s;
+  color:var(--text-light); font-family:'Quicksand',sans-serif;
+}
+.produit-btn:hover { border-color:var(--uc-gold); background:rgba(255,215,0,0.07); transform:scale(1.03); }
+.produit-emoji { font-size:1.7rem; display:block; margin-bottom:0.3rem; }
+.produit-nom  { font-size:0.78rem; font-weight:700; display:block; }
+.produit-prix { font-size:0.72rem; color:var(--uc-gold); display:block; margin-top:0.2rem; }
+
+/* TICKET */
+.ticket-panel {
+  background:var(--uc-card); border:1px solid rgba(255,215,0,0.2); border-radius:14px;
+  padding:1.4rem; display:flex; flex-direction:column;
+}
+.ticket-header {
+  font-family:'Cinzel Decorative',serif; font-size:0.8rem; color:var(--uc-gold); text-align:center;
+  letter-spacing:3px; border-bottom:1px dashed rgba(255,215,0,0.3); padding-bottom:0.9rem; margin-bottom:0.9rem;
+}
+.ticket-items { flex:1; min-height:180px; }
+.ticket-item {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:0.45rem 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.88rem;
+}
+.ticket-item-remove { background:none; border:none; color:var(--uc-rose); cursor:pointer; font-size:0.9rem; }
+.ticket-total {
+  border-top:1px solid rgba(255,215,0,0.25); padding-top:0.9rem; margin-top:0.9rem;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.ticket-total-label { font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); font-family:'Josefin Sans',sans-serif; }
+.ticket-total-amount { font-family:'Cinzel Decorative',serif; font-size:1.6rem; color:var(--uc-gold); }
+.ticket-discount-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:0.4rem 0; border-bottom:1px solid rgba(180,79,255,0.15);
+  font-size:0.82rem; color:var(--uc-mauve); font-style:italic;
+}
+.ticket-discount-remove { background:none; border:none; color:var(--uc-rose); cursor:pointer; font-size:0.85rem; }
+.payment-btns { display:flex; gap:0.4rem; margin-top:0.9rem; }
+.payment-btn {
+  flex:1; background:transparent; border:1px solid rgba(180,79,255,0.25); color:var(--text-dim);
+  font-family:'Josefin Sans',sans-serif; font-size:0.75rem; font-weight:700;
+  letter-spacing:1px; text-transform:uppercase; padding:7px; border-radius:6px;
+  cursor:pointer; transition:all 0.2s;
+}
+.payment-btn.selected { border-color:var(--uc-gold); color:var(--uc-gold); background:rgba(255,215,0,0.07); }
+.payment-btn:hover    { border-color:var(--uc-gold); color:var(--uc-gold); }
+
+/* Boutons extra caisse */
+.caisse-extra-btns { display:grid; grid-template-columns:1fr 1fr; gap:0.4rem; margin-top:0.9rem; }
+.btn-extra-caisse {
+  background:transparent; font-family:'Josefin Sans',sans-serif; font-weight:700;
+  font-size:0.75rem; letter-spacing:1px; text-transform:uppercase;
+  padding:8px 6px; border-radius:6px; cursor:pointer; transition:all 0.25s;
+  display:flex; align-items:center; justify-content:center; gap:4px;
+}
+.btn-extra-prix-libre { color:var(--uc-gold); border:1px solid rgba(255,215,0,0.35); }
+.btn-extra-prix-libre:hover { background:rgba(255,215,0,0.1); border-color:var(--uc-gold); }
+.btn-extra-reduction  { color:var(--uc-mauve); border:1px solid rgba(180,79,255,0.35); }
+.btn-extra-reduction:hover  { background:rgba(180,79,255,0.1); border-color:var(--uc-mauve); }
+.btn-extra-modif-total { color:var(--uc-pink); border:1px solid rgba(255,79,216,0.35); }
+.btn-extra-modif-total:hover { background:rgba(255,79,216,0.1); border-color:var(--uc-rose); }
+
+/* Réduction tabs */
+.reduc-tabs { display:flex; gap:0; margin-bottom:1.5rem; border:1px solid rgba(180,79,255,0.25); border-radius:8px; overflow:hidden; }
+.reduc-tab {
+  flex:1; background:transparent; border:none; color:var(--text-dim);
+  font-family:'Josefin Sans',sans-serif; font-weight:700; font-size:0.82rem;
+  letter-spacing:1px; text-transform:uppercase; padding:10px; cursor:pointer; transition:all 0.2s;
+}
+.reduc-tab.active { background:rgba(180,79,255,0.15); color:var(--uc-mauve); }
+.reduc-tab:hover:not(.active) { background:rgba(180,79,255,0.05); color:var(--text-light); }
+.reduc-preview {
+  background:rgba(180,79,255,0.07); border:1px solid rgba(180,79,255,0.2);
+  border-radius:8px; padding:0.9rem 1rem; margin-top:1rem;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.reduc-preview-label { font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); font-family:'Josefin Sans',sans-serif; }
+.reduc-preview-value { font-family:'Cinzel Decorative',serif; font-size:1.2rem; color:var(--uc-mauve); }
+
+/* RAPPORT */
+.rapport-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:1rem; margin-bottom:2rem; }
+.rapport-card { background:var(--uc-card); border-radius:14px; padding:1.4rem; border:1px solid rgba(180,79,255,0.1); }
+.rapport-value { font-family:'Cinzel Decorative',serif; font-size:1.6rem; font-weight:900; }
+.rapport-label { color:var(--text-dim); font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; margin-top:0.3rem; font-family:'Josefin Sans',sans-serif; }
+
+/* TABLE */
+.data-table { width:100%; border-collapse:collapse; }
+.data-table th {
+  font-size:0.68rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim);
+  text-align:left; padding:0.8rem 1rem; border-bottom:1px solid rgba(180,79,255,0.15);
+  font-family:'Josefin Sans',sans-serif;
+}
+.data-table td { padding:0.75rem 1rem; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.88rem; }
+.data-table tr:hover td { background:rgba(255,215,0,0.02); }
+
+/* EMPTY STATE */
+.empty-state { text-align:center; padding:3.5rem 2rem; color:var(--text-dim); }
+.empty-state-icon { font-size:3.5rem; margin-bottom:0.8rem; }
+.empty-state-text { font-size:1rem; }
+
+/* WORKERS */
+.worker-list { display:flex; flex-direction:column; gap:0.7rem; max-height:280px; overflow-y:auto; }
+.worker-item {
+  display:flex; align-items:center; gap:0.9rem;
+  background:rgba(0,0,0,0.35); border:1px solid rgba(180,79,255,0.1);
+  border-radius:8px; padding:0.75rem 1rem;
+}
+.worker-check { accent-color:var(--uc-gold); width:17px; height:17px; cursor:pointer; }
+.worker-name { flex:1; font-weight:700; }
+
+/* LOADING */
+.loading { display:flex; align-items:center; justify-content:center; padding:3rem; color:var(--text-dim); font-size:0.88rem; letter-spacing:2px; font-family:'Josefin Sans',sans-serif; }
+.spinner { width:28px; height:28px; border:2px solid rgba(180,79,255,0.15); border-top-color:var(--uc-mauve); border-radius:50%; animation:spin 0.8s linear infinite; margin-right:0.8rem; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(180,79,255,0.3); border-radius:3px; }
+
+/* USER BADGE */
+.user-badge {
+  display:flex; align-items:center; gap:0.7rem;
+  background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.2);
+  border-radius:8px; padding:5px 13px;
+}
+.ub-name  { font-weight:700; font-size:0.88rem; font-family:'Josefin Sans',sans-serif; }
+.ub-role  { font-size:0.62rem; letter-spacing:2px; text-transform:uppercase; font-family:'Josefin Sans',sans-serif; }
+.role-patron   { color:var(--uc-gold); }
+.role-employee { color:var(--uc-mauve); }
+.logout-btn { background:transparent; border:none; color:var(--text-dim); cursor:pointer; font-size:1.1rem; transition:color 0.2s; }
+.logout-btn:hover { color:var(--uc-rose); }
+
+/* SOIREE SELECTOR */
+.soiree-selector {
+  background:var(--uc-card); border:1px solid rgba(180,79,255,0.18);
+  border-radius:14px; padding:1.2rem; margin-bottom:1.4rem;
+}
+.soiree-selector-label { font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.4rem; font-family:'Josefin Sans',sans-serif; }
+.history-entry { display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.88rem; }
+
+/* ROLE BADGE */
+.role-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; font-weight:700; font-family:'Josefin Sans',sans-serif; }
+.rb-patron   { background:rgba(255,215,0,0.1);    color:var(--uc-gold);  border:1px solid rgba(255,215,0,0.3); }
+.rb-employee { background:rgba(180,79,255,0.08);  color:var(--uc-mauve); border:1px solid rgba(180,79,255,0.25); }
+.rb-barman   { background:rgba(255,79,216,0.08);  color:var(--uc-pink);  border:1px solid rgba(255,79,216,0.25); }
+.rb-securite { background:rgba(160,255,204,0.08); color:#a0ffcc;         border:1px solid rgba(160,255,204,0.25); }
+
+@media(max-width:768px){
+  .nav-links { display:none; }
+  .hero-title { font-size:2rem; }
+  .form-row { grid-template-columns:1fr; }
+  #music-player { bottom:1rem; left:1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Particules magiques -->
+<div id="magic-particles"></div>
+
+<!-- YouTube player caché -->
+<div id="yt-player-container"><div id="yt-player"></div></div>
+
+<!-- MUSIC PLAYER -->
+<div id="music-player" class="collapsed" title="Musique de fond">
+  <button id="music-toggle-btn" onclick="toggleMusicPanel()" title="Afficher/Masquer">🦄</button>
+  <div id="player-controls">
+    <div class="eq-bars" id="eq-bars">
+      <div class="eq-bar"></div><div class="eq-bar"></div>
+      <div class="eq-bar"></div><div class="eq-bar"></div>
+    </div>
+    <div class="player-label">Ambiance Unicorn</div>
+    <button class="player-play-btn" id="play-pause-btn" onclick="togglePlayPause()" title="Play/Pause">▶</button>
+  </div>
+  <div id="volume-area">
+    <span class="vol-icon">🔈</span>
+    <input type="range" id="volume-slider" min="0" max="100" value="30" oninput="setVolume(this.value)" title="Volume">
+    <span class="vol-icon" style="font-size:0.7rem;color:var(--uc-gold);min-width:28px" id="vol-display">30%</span>
+  </div>
+</div>
+
+<!-- NAVBAR -->
+<nav id="navbar">
+  <div class="nav-logo" onclick="showPage('home')">
+    <span class="nav-logo-icon">🦄</span>
+    <div>
+      <span class="nav-logo-text">VANILLA UNICORN</span>
+      <span class="nav-logo-sub">Liège City RP</span>
+    </div>
+  </div>
+  <ul class="nav-links">
+    <li><a onclick="showPage('home')"    id="nav-home"    class="active">Accueil</a></li>
+    <li><a onclick="showPage('soirees')" id="nav-soirees">Soirées</a></li>
+    <li><a onclick="showPage('menu')"    id="nav-menu">Menu</a></li>
+    <li><a onclick="showPage('galerie')" id="nav-galerie">Galerie</a></li>
+    <li><a onclick="showPage('contact')" id="nav-contact">Contact</a></li>
+  </ul>
+  <div class="nav-right">
+    <button id="login-btn" onclick="openModal('modal-login')">🔑 Staff</button>
+  </div>
+</nav>
+
+<div id="toast-container"></div>
+
+<!-- ============================== HOME ============================== -->
+<div id="page-home" class="page active">
+  <div class="hero">
+    <div class="hero-crown">🦄</div>
+    <h1 class="hero-title">VANILLA UNICORN</h1>
+    <div class="hero-title-sub">Le Club Exclusif</div>
+    <p class="hero-tagline">✦ FiveM Roleplay ✦ Liège City WL ✦</p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="showPage('soirees')">✨ Voir les Soirées</button>
+      <button class="btn-outline" onclick="showPage('galerie')">📸 Galerie Photos</button>
+    </div>
+    <div class="next-event-banner">
+      <div class="neb-label">✦ Prochain événement</div>
+      <div class="neb-title" id="hero-event-title">Chargement...</div>
+      <div class="neb-date" id="hero-event-date">—</div>
+    </div>
+  </div>
+  <div class="section">
+    <h2 class="section-title">✨ Annonces</h2>
+    <div class="annonces-grid" id="annonces-public">
+      <div class="loading"><div class="spinner"></div> Chargement...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== SOIREES ============================== -->
+<div id="page-soirees" class="page">
+  <div class="section">
+    <h2 class="section-title">🎉 Nos Soirées</h2>
+    <div class="annonces-grid" id="soirees-public">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== MENU ============================== -->
+<div id="page-menu" class="page">
+  <div class="section">
+    <h2 class="section-title">🍾 Notre Menu</h2>
+    <div class="menu-filter-bar" id="menu-categories"></div>
+    <div id="menu-grid"><div class="loading"><div class="spinner"></div> Chargement...</div></div>
+  </div>
+</div>
+
+<!-- ============================== GALERIE ============================== -->
+<div id="page-galerie" class="page">
+  <div class="section">
+    <h2 class="section-title">📸 Galerie Photos</h2>
+    <div id="galerie-albums-view">
+      <div class="albums-grid" id="albums-public"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    <div id="galerie-photos-view" style="display:none">
+      <button class="btn-outline btn-sm" onclick="showAlbumsView()" style="margin-bottom:1.5rem">← Retour aux albums</button>
+      <h3 id="album-current-name" style="font-size:1.2rem;font-weight:700;margin-bottom:1.4rem;color:var(--uc-gold);font-family:'Cinzel Decorative',serif"></h3>
+      <div class="photos-grid" id="photos-public"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== CONTACT ============================== -->
+<div id="page-contact" class="page">
+  <div class="section" style="max-width:600px">
+    <h2 class="section-title">📞 Contact</h2>
+    <div style="background:var(--uc-card);border:1px solid rgba(255,215,0,0.2);border-radius:20px;padding:2.5rem;text-align:center">
+      <div style="font-size:4rem;margin-bottom:1rem;filter:drop-shadow(0 0 20px rgba(255,215,0,0.6))">🦄</div>
+      <h3 style="font-family:'Cinzel Decorative',serif;font-size:1.3rem;font-weight:900;margin-bottom:1rem;background:var(--grad-gold);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Vanilla Unicorn RP</h3>
+      <p style="color:var(--text-dim);margin-bottom:2rem;line-height:1.7">Pour nous rejoindre ou poser une question, rejoins notre serveur Discord !</p>
+      <a href="https://discord.gg/4mwveDSDAN" class="btn-primary" style="display:inline-block;text-decoration:none">💬 Rejoindre le Discord</a>
+      <p style="color:var(--text-dim);font-size:0.82rem;margin-top:1.5rem">📍 Serveur FiveM : Liège City RP</p>
+      <p style="color:var(--text-dim);font-size:0.82rem;margin-top:0.5rem">Conçu par ML Dev</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== DASHBOARD ============================== -->
+<div id="page-dashboard" class="page">
+  <div class="dashboard-header">
+    <div>
+      <div class="dashboard-welcome" id="dash-welcome">Bienvenue !</div>
+      <div class="dashboard-role"   id="dash-role-label"></div>
+    </div>
+    <div style="display:flex;gap:1rem;align-items:center">
+      <div class="user-badge">
+        <div>
+          <div class="ub-name" id="ub-name"></div>
+          <div class="ub-role" id="ub-role"></div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="logout()" title="Déconnexion">⏏</button>
+    </div>
+  </div>
+  <div class="dashboard-content">
+    <div class="tabs" id="dashboard-tabs"></div>
+
+    <!-- TAB SERVICE -->
+    <div id="tab-service" class="tab-content">
+      <div class="soiree-selector">
+        <div class="soiree-selector-label">Soirée concernée</div>
+        <select class="form-select" id="service-soiree-select"><option value="">— Sélectionner une soirée —</option></select>
+      </div>
+      <div class="service-panel">
+        <div style="font-size:0.75rem;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);font-family:'Josefin Sans',sans-serif">Temps de service</div>
+        <div class="service-timer" id="service-timer">00:00:00</div>
+        <div class="service-status" id="service-status">Aucun service actif</div>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+          <button class="btn-primary" id="btn-prise" onclick="priseDeService()">▶ Prise de service</button>
+          <button class="btn-danger"  id="btn-fin"   onclick="finDeService()" style="display:none">⏹ Fin de service</button>
+        </div>
+      </div>
+      <h3 style="font-family:'Cinzel Decorative',serif;font-size:0.85rem;color:var(--uc-gold);margin-bottom:1rem;letter-spacing:2px">HISTORIQUE</h3>
+      <div id="service-history"></div>
+    </div>
+
+    <!-- TAB SECURITE -->
+    <div id="tab-securite" class="tab-content">
+      <div class="soiree-selector">
+        <div class="soiree-selector-label">Soirée</div>
+        <select class="form-select" id="secu-soiree-select" onchange="selectSecuSoiree(this.value)"><option value="">— Sélectionner une soirée —</option></select>
+      </div>
+      <div class="counter-panel">
+        <div style="font-size:0.75rem;letter-spacing:3px;text-transform:uppercase;color:var(--uc-gold);font-family:'Josefin Sans',sans-serif">Entrées totales</div>
+        <div class="counter-display" id="counter-entrees">0</div>
+        <div style="color:var(--text-dim);font-size:0.85rem">
+          <span>VIP: <strong style="color:var(--uc-mauve)" id="counter-vip">0</strong></span>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <span>Refusées: <strong style="color:var(--uc-rose)" id="counter-refuses">0</strong></span>
+        </div>
+        <div class="counter-buttons">
+          <button class="counter-btn minus" onclick="addEntree('refusee')" title="Refusée">✖</button>
+          <button class="counter-btn plus"  onclick="addEntree('normale')" title="Normale">+</button>
+          <button class="counter-btn vip"   onclick="addEntree('vip')"     title="VIP">VIP</button>
+        </div>
+        <div style="margin-top:0.8rem;color:var(--text-dim);font-size:0.75rem;font-family:'Josefin Sans',sans-serif">✖ Refusée &nbsp;|&nbsp; + Normale &nbsp;|&nbsp; VIP</div>
+      </div>
+      <h3 style="font-family:'Cinzel Decorative',serif;font-size:0.85rem;color:var(--uc-gold);margin-bottom:1rem;letter-spacing:2px">DERNIÈRES ENTRÉES</h3>
+      <div id="entrees-history"></div>
+    </div>
+
+    <!-- TAB CAISSE -->
+    <div id="tab-caisse" class="tab-content">
+      <div class="soiree-selector">
+        <div class="soiree-selector-label">Soirée</div>
+        <select class="form-select" id="caisse-soiree-select" onchange="caisseSoireeId = this.value"><option value="">— Sélectionner une soirée —</option></select>
+      </div>
+      <div class="caisse-grid">
+        <div class="produits-panel">
+          <div class="produit-categories" id="produit-categories"></div>
+          <div class="produits-list" id="produits-list"></div>
+        </div>
+        <div class="ticket-panel">
+          <div class="ticket-header">🦄 TICKET EN COURS</div>
+          <div class="ticket-items" id="ticket-items">
+            <div class="empty-state" style="padding:2rem"><div style="font-size:2rem">🧾</div><div style="font-size:0.85rem;margin-top:0.4rem">Ticket vide</div></div>
+          </div>
+          <div class="ticket-total">
+            <div class="ticket-total-label">Total</div>
+            <div class="ticket-total-amount" id="ticket-total">0.00 €</div>
+          </div>
+          <div class="payment-btns">
+            <button class="payment-btn selected" id="pay-especes" onclick="selectPayment('especes')">💵 Espèces</button>
+            <button class="payment-btn"           id="pay-carte"   onclick="selectPayment('carte')">💳 Carte</button>
+            <button class="payment-btn"           id="pay-offert"  onclick="selectPayment('offert')">🎁 Offert</button>
+          </div>
+          <div class="caisse-extra-btns">
+            <button class="btn-extra-caisse btn-extra-prix-libre" onclick="openModal('modal-prix-libre')">✏ Prix libre</button>
+            <button class="btn-extra-caisse btn-extra-reduction"  onclick="openReductionModal()">% Réduction</button>
+            <button class="btn-extra-caisse btn-extra-modif-total" onclick="openModal('modal-modif-total')" style="grid-column:1/-1">✎ Modifier le total</button>
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+            <button class="btn-danger  btn-sm" onclick="clearTicket()"  style="flex:1">✖ Vider</button>
+            <button class="btn-primary btn-sm" onclick="validerVente()" style="flex:2">✓ VALIDER</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB SOIREES -->
+    <div id="tab-soirees" class="tab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+        <h3 style="font-family:'Cinzel Decorative',serif;font-size:0.85rem;color:var(--uc-gold);letter-spacing:2px">GESTION DES SOIRÉES</h3>
+        <button class="btn-primary btn-sm" onclick="openCreateSoireeModal()">+ Créer une soirée</button>
+      </div>
+      <div class="soirees-list" id="soirees-admin"></div>
+    </div>
+
+    <!-- TAB RAPPORT -->
+    <div id="tab-rapport" class="tab-content">
+      <div class="soiree-selector">
+        <div class="soiree-selector-label">Soirée à analyser</div>
+        <select class="form-select" id="rapport-soiree-select" onchange="loadRapport(this.value)"><option value="">— Sélectionner une soirée —</option></select>
+      </div>
+      <div id="rapport-content">
+        <div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">Sélectionnez une soirée pour voir le rapport</div></div>
+      </div>
+    </div>
+
+    <!-- TAB EQUIPE -->
+    <div id="tab-equipe" class="tab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+        <h3 style="font-family:'Cinzel Decorative',serif;font-size:0.85rem;color:var(--uc-gold);letter-spacing:2px">GESTION DE L'ÉQUIPE</h3>
+        <button class="btn-primary btn-sm" onclick="openModal('modal-create-employee')">+ Ajouter un employé</button>
+      </div>
+      <div id="equipe-list"></div>
+    </div>
+
+    <!-- TAB ANNONCES -->
+    <div id="tab-annonces" class="tab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+        <h3 style="font-family:'Cinzel Decorative',serif;font-size:0.85rem;color:var(--uc-gold);letter-spacing:2px">ANNONCES & PROMOTIONS</h3>
+        <button class="btn-primary btn-sm" onclick="openModal('modal-create-annonce')">+ Créer une annonce</button>
+      </div>
+      <div id="annonces-admin-list"></div>
+    </div>
+
+    <!-- TAB PRODUITS -->
+    <div id="tab-produits" class="tab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+        <h3 style="font-family:'Cinzel Decorative',serif;font-size:0.85rem;color:var(--uc-gold);letter-spacing:2px">CARTE DES PRODUITS</h3>
+        <button class="btn-primary btn-sm" onclick="openModal('modal-create-produit')">+ Ajouter un produit</button>
+      </div>
+      <div id="produits-admin-list"></div>
+    </div>
+
+    <!-- TAB ALBUMS -->
+    <div id="tab-albums" class="tab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+        <h3 style="font-family:'Cinzel Decorative',serif;font-size:0.85rem;color:var(--uc-gold);letter-spacing:2px">GESTION DES ALBUMS</h3>
+        <button class="btn-primary btn-sm" onclick="openModal('modal-create-album')">+ Créer un album</button>
+      </div>
+      <div id="albums-admin-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== MODALS ============================== -->
+
+<!-- LOGIN -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-login')">✕</button>
+    <div class="modal-title">🔑 Connexion Staff</div>
+    <div class="form-group"><label class="form-label">Nom d'utilisateur</label><input class="form-input" id="login-username" placeholder="Ex: John" autocomplete="off"></div>
+    <div class="form-group"><label class="form-label">Mot de passe</label><input class="form-input" id="login-password" type="password" placeholder="••••••••"></div>
+    <button class="btn-primary btn-full" style="margin-top:0.5rem" onclick="doLogin()">Connexion</button>
+    <p style="color:var(--text-dim);font-size:0.78rem;text-align:center;margin-top:1rem">Accès réservé au personnel du Vanilla Unicorn</p>
+  </div>
+</div>
+
+<!-- PRIX LIBRE -->
+<div class="modal-overlay" id="modal-prix-libre">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-prix-libre')">✕</button>
+    <div class="modal-title">✏ Prix Personnalisé</div>
+    <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1.4rem;line-height:1.5">Ajoute un article avec un prix libre au ticket.</p>
+    <div class="form-group"><label class="form-label">Désignation</label><input class="form-input" id="libre-nom" placeholder="Ex: Bouteille VIP, Entrée spéciale..."></div>
+    <div class="form-group"><label class="form-label">Emoji (optionnel)</label><input class="form-input" id="libre-emoji" placeholder="🦄" maxlength="4" style="max-width:100px"></div>
+    <div class="form-group"><label class="form-label">Prix (€)</label><input class="form-input" id="libre-prix" type="number" step="0.50" min="0" placeholder="0.00"></div>
+    <div class="form-group"><label class="form-label">Quantité</label><input class="form-input" id="libre-qte" type="number" min="1" value="1" placeholder="1"></div>
+    <button class="btn-primary btn-full" onclick="ajouterPrixLibre()">+ Ajouter au ticket</button>
+  </div>
+</div>
+
+<!-- RÉDUCTION -->
+<div class="modal-overlay" id="modal-reduction">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-reduction')">✕</button>
+    <div class="modal-title">% Réduction</div>
+    <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1.2rem;line-height:1.5">Applique une réduction sur le total du ticket en cours.</p>
+    <div class="reduc-tabs">
+      <button class="reduc-tab active" id="reduc-tab-pct"  onclick="switchReducTab('pct')">% Pourcentage</button>
+      <button class="reduc-tab"        id="reduc-tab-fixe" onclick="switchReducTab('fixe')">€ Montant fixe</button>
+    </div>
+    <div id="reduc-pct-zone">
+      <div class="form-group"><label class="form-label">Pourcentage de réduction</label><input class="form-input" id="reduc-pct-val" type="number" min="1" max="100" step="1" placeholder="Ex: 20" oninput="updateReducPreview()"></div>
+    </div>
+    <div id="reduc-fixe-zone" style="display:none">
+      <div class="form-group"><label class="form-label">Montant à déduire (€)</label><input class="form-input" id="reduc-fixe-val" type="number" min="0.01" step="0.50" placeholder="Ex: 5.00" oninput="updateReducPreview()"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Motif (optionnel)</label><input class="form-input" id="reduc-motif" placeholder="Ex: Fidélité, Happy hour..."></div>
+    <div class="reduc-preview" id="reduc-preview" style="display:none">
+      <div>
+        <div class="reduc-preview-label">Réduction appliquée</div>
+        <div style="color:var(--text-dim);font-size:0.75rem;margin-top:2px" id="reduc-preview-detail"></div>
+      </div>
+      <div class="reduc-preview-value" id="reduc-preview-amount">-0.00 €</div>
+    </div>
+    <button class="btn-primary btn-full" style="margin-top:1rem;background:var(--grad-magic);box-shadow:0 0 20px rgba(180,79,255,0.4)" onclick="appliquerReduction()">✓ Appliquer la réduction</button>
+  </div>
+</div>
+
+<!-- MODIFIER TOTAL -->
+<div class="modal-overlay" id="modal-modif-total">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-modif-total')">✕</button>
+    <div class="modal-title">✎ Modifier le Total</div>
+    <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1.4rem;line-height:1.5">Force un montant total précis pour ce ticket.</p>
+    <div style="background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.15);border-radius:8px;padding:1rem;margin-bottom:1.2rem;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:var(--text-dim);font-size:0.82rem;letter-spacing:1px;text-transform:uppercase;font-family:'Josefin Sans',sans-serif">Total actuel</span>
+      <span style="font-family:'Cinzel Decorative',serif;font-size:1.2rem;color:var(--uc-gold)" id="modif-total-actuel">0.00 €</span>
+    </div>
+    <div class="form-group"><label class="form-label">Nouveau total (€)</label><input class="form-input" id="modif-total-val" type="number" min="0" step="0.50" placeholder="0.00" oninput="updateModifTotalPreview()" style="font-size:1.3rem;padding:14px;text-align:center"></div>
+    <div id="modif-total-preview" style="display:none;background:rgba(255,79,216,0.07);border:1px solid rgba(255,79,216,0.2);border-radius:8px;padding:0.9rem 1rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:var(--text-dim);font-size:0.8rem;text-transform:uppercase;letter-spacing:1px;font-family:'Josefin Sans',sans-serif">Différence</span>
+      <span style="font-family:'Cinzel Decorative',serif;font-size:1rem;color:var(--uc-pink)" id="modif-total-diff"></span>
+    </div>
+    <div class="form-group"><label class="form-label">Motif (optionnel)</label><input class="form-input" id="modif-total-motif" placeholder="Ex: Arrondi, Geste commercial..."></div>
+    <button class="btn-primary btn-full" style="background:var(--grad-magic);box-shadow:0 0 20px rgba(255,79,216,0.3)" onclick="appliquerModifTotal()">✓ Appliquer ce total</button>
+  </div>
+</div>
+
+<!-- CREATE SOIREE -->
+<div class="modal-overlay" id="modal-create-soiree">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="closeModal('modal-create-soiree')">✕</button>
+    <div class="modal-title">🎉 Créer une Soirée</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nom de la soirée</label><input class="form-input" id="cs-nom" placeholder="Ex: Nuit Magique"></div>
+      <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="cs-date" type="date"></div>
+      <div class="form-group"><label class="form-label">Heure de début</label><input class="form-input" id="cs-heure" type="time" value="22:00"></div>
+      <div class="form-group"><label class="form-label">Prix d'entrée (€)</label><input class="form-input" id="cs-prix" type="number" step="0.5" value="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="cs-desc" placeholder="Description de la soirée..."></textarea></div>
+    <div class="form-group">
+      <label class="form-label">Assigner des employés</label>
+      <div class="worker-list" id="cs-workers"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    <button class="btn-primary btn-full" onclick="createSoiree()">✓ Créer la soirée</button>
+  </div>
+</div>
+
+<!-- CREATE EMPLOYEE -->
+<div class="modal-overlay" id="modal-create-employee">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-create-employee')">✕</button>
+    <div class="modal-title">👤 Ajouter un Employé</div>
+    <div class="form-group"><label class="form-label">Nom d'utilisateur</label><input class="form-input" id="emp-username" placeholder="Ex: JohnDoe"></div>
+    <div class="form-group"><label class="form-label">Mot de passe</label><input class="form-input" id="emp-password" type="password" placeholder="Mot de passe"></div>
+    <div class="form-group"><label class="form-label">Permission</label>
+      <select class="form-select" id="emp-role"><option value="employee">Employé</option><option value="patron">Patron</option></select>
+    </div>
+    <p style="color:var(--text-dim);font-size:0.78rem;margin-bottom:1rem;line-height:1.5">💡 Le rôle barman / sécurité est attribué soirée par soirée.</p>
+    <button class="btn-primary btn-full" onclick="createEmployee()">✓ Créer l'employé</button>
+  </div>
+</div>
+
+<!-- CREATE ANNONCE -->
+<div class="modal-overlay" id="modal-create-annonce">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-create-annonce')">✕</button>
+    <div class="modal-title">📣 Créer une Annonce</div>
+    <div class="form-group"><label class="form-label">Titre</label><input class="form-input" id="ann-titre" placeholder="Titre de l'annonce"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Type</label>
+        <select class="form-select" id="ann-type">
+          <option value="soiree">🎉 Soirée</option><option value="promo">💥 Promo</option>
+          <option value="info">ℹ️ Info</option><option value="urgent">🚨 Urgent</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Date de l'événement</label><input class="form-input" id="ann-date" type="datetime-local"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Contenu</label><textarea class="form-textarea" id="ann-contenu" placeholder="Décrivez l'événement..."></textarea></div>
+    <div class="form-group"><label class="form-label">URL Image (optionnel)</label><input class="form-input" id="ann-image" placeholder="https://..."></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:0.8rem">
+      <input type="checkbox" id="ann-published" style="accent-color:var(--uc-gold);width:17px;height:17px">
+      <label for="ann-published" style="color:var(--text-dim);cursor:pointer">Publier immédiatement</label>
+    </div>
+    <button class="btn-primary btn-full" onclick="createAnnonce()">✓ Créer l'annonce</button>
+  </div>
+</div>
+
+<!-- CREATE PRODUIT -->
+<div class="modal-overlay" id="modal-create-produit">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-create-produit')">✕</button>
+    <div class="modal-title">🍾 Ajouter un Produit</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nom du produit</label><input class="form-input" id="prod-nom" placeholder="Ex: Licorne Royale"></div>
+      <div class="form-group"><label class="form-label">Emoji</label><input class="form-input" id="prod-emoji" placeholder="🦄" maxlength="4"></div>
+      <div class="form-group"><label class="form-label">Catégorie</label>
+        <select class="form-select" id="prod-cat">
+          <option value="cocktail">🍹 Cocktail</option><option value="biere">🍺 Bière</option>
+          <option value="shot">🥃 Shot</option><option value="soft">🥤 Soft</option>
+          <option value="bouteille">🍾 Bouteille</option><option value="autre">📦 Autre</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Prix (€)</label><input class="form-input" id="prod-prix" type="number" step="0.50" placeholder="0.00"></div>
+    </div>
+    <button class="btn-primary btn-full" onclick="createProduit()">✓ Ajouter</button>
+  </div>
+</div>
+
+<!-- CREATE ALBUM -->
+<div class="modal-overlay" id="modal-create-album">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-create-album')">✕</button>
+    <div class="modal-title">📸 Créer un Album</div>
+    <div class="form-group"><label class="form-label">Nom de l'album</label><input class="form-input" id="alb-nom" placeholder="Ex: Soirée du 15 Juillet"></div>
+    <div class="form-group"><label class="form-label">Soirée liée (optionnel)</label><select class="form-select" id="alb-soiree"><option value="">— Aucune —</option></select></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:0.8rem">
+      <input type="checkbox" id="alb-public" checked style="accent-color:var(--uc-gold);width:17px;height:17px">
+      <label for="alb-public" style="color:var(--text-dim);cursor:pointer">Album public</label>
+    </div>
+    <button class="btn-primary btn-full" onclick="createAlbum()">✓ Créer l'album</button>
+  </div>
+</div>
+
+<!-- ADD PHOTO -->
+<div class="modal-overlay" id="modal-add-photo">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-add-photo')">✕</button>
+    <div class="modal-title">🖼 Ajouter une Photo</div>
+    <div class="form-group"><label class="form-label">Album</label><select class="form-select" id="photo-album-select"></select></div>
+    <div class="form-group"><label class="form-label">URL de l'image</label><input class="form-input" id="photo-url" placeholder="https://i.imgur.com/..."></div>
+    <div class="form-group"><label class="form-label">Légende (optionnel)</label><input class="form-input" id="photo-caption" placeholder="Description de la photo"></div>
+    <button class="btn-primary btn-full" onclick="addPhoto()">✓ Ajouter</button>
+  </div>
+</div>
+
+<!-- MANAGE SOIREE -->
+<div class="modal-overlay" id="modal-manage-soiree">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="closeModal('modal-manage-soiree')">✕</button>
+    <div class="modal-title" id="ms-title">Gérer la soirée</div>
+    <div id="ms-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- ============================== SCRIPTS ============================== -->
+<script>
+// Particules magiques
+(function() {
+  const container = document.getElementById('magic-particles');
+  const emojis = ['✨','⭐','💫','🌟','💜','💎','🦄'];
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement('div');
+    p.className = 'magic-particle';
+    p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.animationDuration = (12 + Math.random() * 18) + 's';
+    p.style.animationDelay = (Math.random() * 15) + 's';
+    p.style.fontSize = (0.7 + Math.random() * 0.8) + 'rem';
+    container.appendChild(p);
+  }
+})();
+
+// ===== YOUTUBE PLAYER =====
+const YT_VIDEO_ID = 'Y6mlwzzJ4lc';
+let ytPlayer = null, musicPlaying = false, musicPanelOpen = false, currentVolume = 30, ytReady = false;
+
+function loadYouTubeAPI() {
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('yt-player', {
+    height:'1', width:'1', videoId: YT_VIDEO_ID,
+    playerVars: { autoplay:0, controls:0, loop:1, playlist:YT_VIDEO_ID, modestbranding:1, rel:0 },
+    events: { onReady: e => { ytReady=true; e.target.setVolume(currentVolume); updateVolumeSliderBg(currentVolume); },
+              onStateChange: e => {
+                if (e.data===YT.PlayerState.PLAYING) { musicPlaying=true; updatePlayerUI(true); }
+                else if (e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.ENDED) {
+                  musicPlaying=false; updatePlayerUI(false);
+                  if (e.data===YT.PlayerState.ENDED) setTimeout(()=>{ if(ytPlayer) ytPlayer.playVideo(); },500);
+                }
+              },
+              onError: ()=>updatePlayerUI(false) }
+  });
+};
+function updatePlayerUI(playing) {
+  const btn=document.getElementById('play-pause-btn'), eq=document.getElementById('eq-bars'), tb=document.getElementById('music-toggle-btn');
+  if(btn) btn.textContent=playing?'⏸':'▶';
+  if(eq) eq.classList.toggle('paused',!playing);
+  if(tb) tb.classList.toggle('playing',playing);
+}
+function togglePlayPause() { if(!ytPlayer||!ytReady){toast('Lecteur pas encore prêt…','info');return;} if(musicPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); }
+function toggleMusicPanel() {
+  musicPanelOpen=!musicPanelOpen;
+  const p=document.getElementById('music-player');
+  if(musicPanelOpen){p.classList.remove('collapsed');if(ytReady&&!musicPlaying) ytPlayer.playVideo();}
+  else p.classList.add('collapsed');
+}
+function setVolume(val) {
+  currentVolume=parseInt(val);
+  if(ytPlayer&&ytPlayer.setVolume) ytPlayer.setVolume(currentVolume);
+  document.getElementById('vol-display').textContent=currentVolume+'%';
+  updateVolumeSliderBg(currentVolume);
+  const icon=document.querySelector('#volume-area .vol-icon');
+  if(icon) icon.textContent=currentVolume===0?'🔇':currentVolume<50?'🔈':'🔊';
+}
+function updateVolumeSliderBg(val) { const s=document.getElementById('volume-slider'); if(s) s.style.setProperty('--vol-pct',val+'%'); }
+loadYouTubeAPI();
+</script>
+
+<script>
+const SUPA_URL = 'https://sevrfgivcpefyykuffti.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNldnJmZ2l2Y3BlZnl5a3VmZnRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5NDI1NTMsImV4cCI6MjA3ODUxODU1M30.YZnkSHsVWKQEhfU7xYfWyTFmtkM28Zuzdu7Y1sjBXQc';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser=null, currentService=null, serviceTimerInterval=null;
+let caisseSoireeId=null, secuSoireeId=null;
+let ticket=[], ticketDiscount=null, paymentMethod='especes';
+let produits=[], currentProduitCat='all', currentMenuCat='all', reducTabMode='pct', manageSoireeId=null;
+
+// ===== NAVIGATION =====
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const navEl=document.getElementById('nav-'+page); if(navEl) navEl.classList.add('active');
+  if(page==='home')    loadPublicAnnonces();
+  if(page==='soirees') loadPublicSoirees();
+  if(page==='menu')    loadPublicMenu('all');
+  if(page==='galerie') loadPublicAlbums();
+}
+function toast(msg,type='info') {
+  const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg;
+  document.getElementById('toast-container').appendChild(t); setTimeout(()=>t.remove(),4000);
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o=>{ o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }); });
+
+// ===== AUTH =====
+async function doLogin() {
+  const username=document.getElementById('login-username').value.trim();
+  const password=document.getElementById('login-password').value;
+  if(!username||!password){toast('Remplis tous les champs','error');return;}
+  const {data,error}=await db.from('employees_unicorn').select('*').eq('username',username).eq('is_active',true).single();
+  if(error||!data){toast('Utilisateur introuvable','error');return;}
+  if(data.password!==password){toast('Mot de passe incorrect','error');return;}
+  currentUser=data; closeModal('modal-login');
+  document.getElementById('login-btn').style.display='none';
+  initDashboard(); showPage('dashboard');
+  toast(`Bienvenue ${data.username} ! 🦄`,'success');
+}
+function logout() {
+  currentUser=null; clearInterval(serviceTimerInterval); currentService=null;
+  ticket=[]; ticketDiscount=null;
+  document.getElementById('login-btn').style.display=''; showPage('home'); toast('Déconnecté','info');
+}
+
+// ===== DASHBOARD =====
+function initDashboard() {
+  document.getElementById('dash-welcome').textContent=`Bienvenue, ${currentUser.username} !`;
+  document.getElementById('dash-role-label').textContent=currentUser.role==='patron'?'👑 Patron':'👤 Employé';
+  document.getElementById('ub-name').textContent=currentUser.username;
+  document.getElementById('ub-role').textContent=currentUser.role;
+  document.getElementById('ub-role').className=`ub-role role-${currentUser.role}`;
+  buildTabs(); loadSoireesForSelects();
+  if(currentUser.role==='patron'){ loadSoireesAdmin(); loadEquipe(); loadAnnoncesAdmin(); loadProduitsAdmin(); loadAlbumsAdmin(); }
+  checkActiveService();
+}
+
+function buildTabs() {
+  const tabsDef=[
+    {id:'service',  label:'⏱ Service',  roles:['patron','employee']},
+    {id:'securite', label:'🚪 Entrées',  roles:['patron','employee']},
+    {id:'caisse',   label:'🧾 Caisse',   roles:['patron','employee']},
+    {id:'soirees',  label:'🎉 Soirées',  roles:['patron']},
+    {id:'rapport',  label:'📊 Rapport',  roles:['patron']},
+    {id:'equipe',   label:'👥 Équipe',   roles:['patron']},
+    {id:'annonces', label:'📣 Annonces', roles:['patron']},
+    {id:'produits', label:'🍾 Produits', roles:['patron']},
+    {id:'albums',   label:'📸 Albums',   roles:['patron']},
+  ];
+  const el=document.getElementById('dashboard-tabs'); el.innerHTML=''; let first=true;
+  tabsDef.forEach(t=>{
+    if(!t.roles.includes(currentUser.role)) return;
+    const btn=document.createElement('button');
+    btn.className='tab-btn'+(first?' active':''); btn.textContent=t.label; btn.dataset.tab=t.id;
+    btn.onclick=()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('tab-'+t.id).classList.add('active');
+      if(t.id==='caisse') loadProduitsCaisse();
+    };
+    el.appendChild(btn);
+    if(first){ document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('tab-'+t.id).classList.add('active'); first=false; }
+  });
+}
+
+async function loadSoireesForSelects() {
+  const {data}=await db.from('soirees_unicorn').select('*').order('date_soiree',{ascending:false});
+  if(!data) return;
+  ['service-soiree-select','secu-soiree-select','caisse-soiree-select','rapport-soiree-select'].forEach(sid=>{
+    const sel=document.getElementById(sid); if(!sel) return;
+    sel.innerHTML='<option value="">— Sélectionner une soirée —</option>';
+    data.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=`${s.nom} — ${fmtDate(s.date_soiree)}`; sel.appendChild(o); });
+  });
+  const albSel=document.getElementById('alb-soiree');
+  if(albSel){ albSel.innerHTML='<option value="">— Aucune —</option>'; data.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.nom; albSel.appendChild(o); }); }
+}
+
+// ===== SERVICE =====
+async function checkActiveService() {
+  const {data}=await db.from('services_unicorn').select('*').eq('employee_id',currentUser.id).eq('statut','en_cours').maybeSingle();
+  if(data){ currentService=data; startServiceTimer(); document.getElementById('btn-prise').style.display='none'; document.getElementById('btn-fin').style.display=''; document.getElementById('service-status').textContent='Service en cours ✓'; }
+  loadServiceHistory();
+}
+async function priseDeService() {
+  const soireeId=document.getElementById('service-soiree-select').value;
+  if(!soireeId){toast('Sélectionne une soirée','error');return;}
+  const {data,error}=await db.from('services_unicorn').insert({employee_id:currentUser.id,soiree_id:soireeId,heure_debut:new Date().toISOString(),statut:'en_cours'}).select().single();
+  if(error){toast('Erreur prise de service','error');return;}
+  currentService=data; startServiceTimer();
+  document.getElementById('btn-prise').style.display='none'; document.getElementById('btn-fin').style.display='';
+  document.getElementById('service-status').textContent='Service en cours ✓'; toast('Prise de service enregistrée !','success');
+}
+function startServiceTimer() {
+  clearInterval(serviceTimerInterval);
+  serviceTimerInterval=setInterval(()=>{ if(!currentService) return; document.getElementById('service-timer').textContent=fmtDuration(Date.now()-new Date(currentService.heure_debut).getTime()); },1000);
+}
+async function finDeService() {
+  if(!currentService) return;
+  const now=new Date(); const minutes=Math.round((now-new Date(currentService.heure_debut))/60000);
+  await db.from('services_unicorn').update({heure_fin:now.toISOString(),duree_minutes:minutes,statut:'termine'}).eq('id',currentService.id);
+  clearInterval(serviceTimerInterval); currentService=null;
+  document.getElementById('service-timer').textContent='00:00:00';
+  document.getElementById('service-status').textContent='Aucun service actif';
+  document.getElementById('btn-prise').style.display=''; document.getElementById('btn-fin').style.display='none';
+  toast(`Service terminé — Durée : ${minutes} min`,'success'); loadServiceHistory();
+}
+async function loadServiceHistory() {
+  const {data}=await db.from('services_unicorn').select('*,soirees_unicorn(nom)').eq('employee_id',currentUser.id).eq('statut','termine').order('created_at',{ascending:false}).limit(10);
+  const el=document.getElementById('service-history');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div>Aucun service enregistré</div></div>';return;}
+  el.innerHTML=data.map(s=>`<div class="history-entry"><span>${s.soirees_unicorn?.nom||'—'} <span style="color:var(--text-dim);font-size:0.78rem">— ${fmtDate(s.created_at)}</span></span><span style="color:var(--uc-gold);font-weight:700">${s.duree_minutes} min</span></div>`).join('');
+}
+
+// ===== SECURITE =====
+function selectSecuSoiree(val){secuSoireeId=val;if(val) loadEntreesCount();}
+async function addEntree(type){
+  if(!secuSoireeId){toast('Sélectionne une soirée d\'abord','error');return;}
+  await db.from('entrees_unicorn').insert({soiree_id:secuSoireeId,agent_id:currentUser.id,type_entree:type});
+  loadEntreesCount();
+}
+async function loadEntreesCount(){
+  if(!secuSoireeId) return;
+  const {data}=await db.from('entrees_unicorn').select('*').eq('soiree_id',secuSoireeId);
+  if(!data) return;
+  const vip=data.filter(e=>e.type_entree==='vip').length;
+  const refuses=data.filter(e=>e.type_entree==='refusee').length;
+  const normales=data.filter(e=>e.type_entree==='normale').length;
+  document.getElementById('counter-entrees').textContent=normales+vip;
+  document.getElementById('counter-vip').textContent=vip;
+  document.getElementById('counter-refuses').textContent=refuses;
+  const hist=document.getElementById('entrees-history');
+  const last=[...data].reverse().slice(0,15);
+  hist.innerHTML=last.map(e=>`<div class="history-entry"><span>${e.type_entree==='normale'?'✅ Entrée normale':e.type_entree==='vip'?'⭐ Entrée VIP':'❌ Refusée'}</span><span style="color:var(--text-dim);font-size:0.78rem">${fmtTime(e.timestamp)}</span></div>`).join('');
+}
+
+// ===== CAISSE =====
+async function loadProduitsCaisse(){
+  const {data}=await db.from('produits_unicorn').select('*').eq('is_active',true).order('categorie');
+  produits=data||[];
+  const cats=['all',...new Set(produits.map(p=>p.categorie))];
+  document.getElementById('produit-categories').innerHTML=cats.map(c=>`<button class="cat-btn ${c===currentProduitCat?'active':''}" onclick="filterProduits(this,'${c}')">${c==='all'?'🦄 Tous':c}</button>`).join('');
+  renderProduits();
+}
+function filterProduits(btn,cat){
+  currentProduitCat=cat;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderProduits();
+}
+function renderProduits(){
+  const filtered=currentProduitCat==='all'?produits:produits.filter(p=>p.categorie===currentProduitCat);
+  document.getElementById('produits-list').innerHTML=filtered.map(p=>`<button class="produit-btn" onclick='addToTicket(${JSON.stringify(p)})'><span class="produit-emoji">${p.emoji}</span><span class="produit-nom">${p.nom}</span><span class="produit-prix">${parseFloat(p.prix).toFixed(2)} €</span></button>`).join('');
+}
+function addToTicket(p){
+  const ex=ticket.find(t=>t.produit_id===p.id);
+  if(ex) ex.quantite++; else ticket.push({produit_id:p.id,nom:p.nom,emoji:p.emoji,prix:parseFloat(p.prix),quantite:1});
+  renderTicket();
+}
+
+// ===== PRIX LIBRE =====
+function ajouterPrixLibre(){
+  const nom=document.getElementById('libre-nom').value.trim();
+  const emoji=document.getElementById('libre-emoji').value.trim()||'🦄';
+  const prix=parseFloat(document.getElementById('libre-prix').value);
+  const qte=parseInt(document.getElementById('libre-qte').value)||1;
+  if(!nom){toast('Donne un nom à l\'article','error');return;}
+  if(isNaN(prix)||prix<0){toast('Prix invalide','error');return;}
+  ticket.push({produit_id:'libre_'+Date.now(),nom,emoji,prix,quantite:qte,libre:true});
+  renderTicket(); closeModal('modal-prix-libre'); toast(`${emoji} ${nom} ajouté au ticket`,'success');
+  document.getElementById('libre-nom').value=''; document.getElementById('libre-emoji').value=''; document.getElementById('libre-prix').value=''; document.getElementById('libre-qte').value='1';
+}
+
+// ===== RÉDUCTION =====
+function openReductionModal(){
+  const rawTotal=ticket.reduce((s,t)=>s+t.prix*t.quantite,0);
+  if(!ticket.length||rawTotal<=0){toast('Le ticket est vide','error');return;}
+  document.getElementById('reduc-pct-val').value=''; document.getElementById('reduc-fixe-val').value=''; document.getElementById('reduc-motif').value=''; document.getElementById('reduc-preview').style.display='none';
+  reducTabMode='pct'; document.getElementById('reduc-tab-pct').classList.add('active'); document.getElementById('reduc-tab-fixe').classList.remove('active');
+  document.getElementById('reduc-pct-zone').style.display=''; document.getElementById('reduc-fixe-zone').style.display='none';
+  openModal('modal-reduction');
+}
+function switchReducTab(mode){
+  reducTabMode=mode;
+  document.getElementById('reduc-tab-pct').classList.toggle('active',mode==='pct');
+  document.getElementById('reduc-tab-fixe').classList.toggle('active',mode==='fixe');
+  document.getElementById('reduc-pct-zone').style.display=mode==='pct'?'':'none';
+  document.getElementById('reduc-fixe-zone').style.display=mode==='fixe'?'':'none';
+  document.getElementById('reduc-preview').style.display='none';
+}
+function updateReducPreview(){
+  const rawTotal=ticket.reduce((s,t)=>s+t.prix*t.quantite,0);
+  let montant=0,detail='';
+  if(reducTabMode==='pct'){ const pct=parseFloat(document.getElementById('reduc-pct-val').value); if(!isNaN(pct)&&pct>0&&pct<=100){montant=rawTotal*pct/100;detail=`${pct}% sur ${rawTotal.toFixed(2)} €`;} }
+  else { const fixe=parseFloat(document.getElementById('reduc-fixe-val').value); if(!isNaN(fixe)&&fixe>0){montant=Math.min(fixe,rawTotal);detail=`Montant fixe sur ${rawTotal.toFixed(2)} €`;} }
+  if(montant>0){ document.getElementById('reduc-preview').style.display='flex'; document.getElementById('reduc-preview-amount').textContent='-'+montant.toFixed(2)+' €'; document.getElementById('reduc-preview-detail').textContent=detail; }
+  else document.getElementById('reduc-preview').style.display='none';
+}
+function appliquerReduction(){
+  const rawTotal=ticket.reduce((s,t)=>s+t.prix*t.quantite,0);
+  const motif=document.getElementById('reduc-motif').value.trim()||'Réduction'; let montant=0;
+  if(reducTabMode==='pct'){ const pct=parseFloat(document.getElementById('reduc-pct-val').value); if(isNaN(pct)||pct<=0||pct>100){toast('Pourcentage invalide (1-100)','error');return;} montant=rawTotal*pct/100; ticketDiscount={type:'pct',valeur:pct,montant,motif}; }
+  else { const fixe=parseFloat(document.getElementById('reduc-fixe-val').value); if(isNaN(fixe)||fixe<=0){toast('Montant invalide','error');return;} montant=Math.min(fixe,rawTotal); ticketDiscount={type:'fixe',valeur:fixe,montant,motif}; }
+  closeModal('modal-reduction'); renderTicket(); toast(`Réduction de -${montant.toFixed(2)} € appliquée !`,'success');
+}
+
+// ===== MODIFIER TOTAL =====
+function updateModifTotalPreview(){
+  const rawTotal=ticket.reduce((s,t)=>s+t.prix*t.quantite,0);
+  const newVal=parseFloat(document.getElementById('modif-total-val').value);
+  const preview=document.getElementById('modif-total-preview');
+  if(!isNaN(newVal)&&newVal>=0){ const diff=newVal-rawTotal; document.getElementById('modif-total-diff').textContent=(diff>=0?'+':'')+diff.toFixed(2)+' €'; preview.style.display='flex'; }
+  else preview.style.display='none';
+}
+function appliquerModifTotal(){
+  if(!ticket.length){toast('Le ticket est vide','error');return;}
+  const newVal=parseFloat(document.getElementById('modif-total-val').value);
+  const motif=document.getElementById('modif-total-motif').value.trim()||'Modification manuelle';
+  if(isNaN(newVal)||newVal<0){toast('Montant invalide','error');return;}
+  ticketDiscount={type:'total',valeur:newVal,montant:null,motif}; closeModal('modal-modif-total'); renderTicket(); toast(`Total modifié → ${newVal.toFixed(2)} €`,'success');
+}
+
+// ===== TICKET =====
+function getTicketTotal(){
+  const raw=ticket.reduce((s,t)=>s+t.prix*t.quantite,0);
+  if(!ticketDiscount) return raw;
+  if(ticketDiscount.type==='total') return ticketDiscount.valeur;
+  if(ticketDiscount.type==='pct')   return Math.max(0,raw-raw*ticketDiscount.valeur/100);
+  if(ticketDiscount.type==='fixe')  return Math.max(0,raw-ticketDiscount.valeur);
+  return raw;
+}
+function renderTicket(){
+  const el=document.getElementById('ticket-items');
+  if(!ticket.length){ ticketDiscount=null; el.innerHTML='<div class="empty-state" style="padding:2rem"><div style="font-size:2rem">🧾</div><div style="font-size:0.82rem;margin-top:0.4rem">Ticket vide</div></div>'; document.getElementById('ticket-total').textContent='0.00 €'; return; }
+  let html=ticket.map((t,i)=>`<div class="ticket-item"><span>${t.emoji} ${t.nom}${t.libre?' <span style="font-size:0.7rem;color:var(--uc-gold);opacity:0.7">(libre)</span>':''}</span><span style="display:flex;align-items:center;gap:0.4rem"><span style="color:var(--text-dim)">${t.quantite}x</span><span style="color:var(--uc-gold);font-weight:700">${(t.prix*t.quantite).toFixed(2)}€</span><button class="ticket-item-remove" onclick="removeFromTicket(${i})">✕</button></span></div>`).join('');
+  if(ticketDiscount){
+    const raw=ticket.reduce((s,t)=>s+t.prix*t.quantite,0);
+    let lbl=ticketDiscount.type==='pct'?`${ticketDiscount.motif} (-${ticketDiscount.valeur}%)`:ticketDiscount.type==='fixe'?`${ticketDiscount.motif} (-${ticketDiscount.valeur.toFixed(2)}€)`:`${ticketDiscount.motif} (total forcé)`;
+    const disp=ticketDiscount.type==='total'?`→ ${ticketDiscount.valeur.toFixed(2)} €`:`-${(raw-getTicketTotal()).toFixed(2)} €`;
+    html+=`<div class="ticket-discount-row"><span>🏷 ${lbl}</span><span style="display:flex;align-items:center;gap:0.4rem"><span>${disp}</span><button class="ticket-discount-remove" onclick="supprimerReduction()">✕</button></span></div>`;
+  }
+  el.innerHTML=html; document.getElementById('ticket-total').textContent=getTicketTotal().toFixed(2)+' €';
+}
+function supprimerReduction(){ticketDiscount=null;renderTicket();toast('Réduction supprimée','info');}
+function removeFromTicket(i){ticket.splice(i,1);if(!ticket.length) ticketDiscount=null;renderTicket();}
+function clearTicket(){ticket=[];ticketDiscount=null;renderTicket();}
+function selectPayment(m){
+  paymentMethod=m; document.querySelectorAll('.payment-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('pay-'+m).classList.add('selected');
+}
+async function validerVente(){
+  if(!caisseSoireeId){toast('Sélectionne une soirée','error');return;}
+  if(!ticket.length){toast('Le ticket est vide','error');return;}
+  const totalFinal=getTicketTotal();
+  const inserts=ticket.map(t=>({soiree_id:caisseSoireeId,barman_id:currentUser.id,produit_id:t.libre?null:t.produit_id,quantite:t.quantite,prix_unitaire:t.prix,methode_paiement:paymentMethod,note:t.libre?t.nom:null}));
+  if(ticketDiscount) inserts[inserts.length-1].note_reduction=JSON.stringify(ticketDiscount);
+  const {error}=await db.from('ventes_unicorn').insert(inserts);
+  if(error){toast('Erreur lors de la vente','error');return;}
+  toast(`✓ Vente validée — ${totalFinal.toFixed(2)} € (${paymentMethod})`,'success'); clearTicket();
+}
+
+// Override openModal pour modif-total
+const _origOpen=window.openModal;
+window.openModal=function(id){
+  if(id==='modal-modif-total'){
+    const raw=ticket.reduce((s,t)=>s+t.prix*t.quantite,0);
+    const el=document.getElementById('modif-total-actuel'); if(el) el.textContent=raw.toFixed(2)+' €';
+    const vi=document.getElementById('modif-total-val'); if(vi) vi.value='';
+    const mi=document.getElementById('modif-total-motif'); if(mi) mi.value='';
+    const pr=document.getElementById('modif-total-preview'); if(pr) pr.style.display='none';
+  }
+  document.getElementById(id).classList.add('open');
+};
+
+// ===== PATRON: SOIREES =====
+async function loadSoireesAdmin(){
+  const {data}=await db.from('soirees_unicorn').select('*').order('date_soiree',{ascending:false});
+  const el=document.getElementById('soirees-admin');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🎉</div><div class="empty-state-text">Aucune soirée créée</div></div>';return;}
+  el.innerHTML=data.map(s=>{ const d=new Date(s.date_soiree); return `<div class="soiree-card"><div class="soiree-date-badge"><div class="sdb-day">${d.getDate().toString().padStart(2,'0')}</div><div class="sdb-month">${d.toLocaleString('fr',{month:'short'}).toUpperCase()}</div></div><div class="soiree-info"><div class="soiree-name">${s.nom}</div><div class="soiree-meta">⏰ ${s.heure_debut||'—'} &nbsp;|&nbsp; 💶 ${s.prix_entree||0}€ entrée</div></div><span class="soiree-status status-${s.statut}">${statusLabel(s.statut)}</span><div class="soiree-actions"><button class="btn-outline btn-sm" onclick="openManageSoiree('${s.id}','${esc(s.nom)}')">⚙ Gérer</button>${s.statut==='planifiee'?`<button class="btn-success btn-sm" onclick="updateStatut('${s.id}','en_cours')">▶ Démarrer</button>`:''}${s.statut==='en_cours'?`<button class="btn-danger btn-sm" onclick="updateStatut('${s.id}','terminee')">⏹ Terminer</button>`:''}</div></div>`; }).join('');
+}
+function statusLabel(s){ return s==='planifiee'?'📅 Planifiée':s==='en_cours'?'🔴 En cours':'✓ Terminée'; }
+async function updateStatut(id,statut){ await db.from('soirees_unicorn').update({statut}).eq('id',id); toast('Statut mis à jour','success'); loadSoireesAdmin(); }
+async function openCreateSoireeModal(){
+  const {data}=await db.from('employees_unicorn').select('*').eq('is_active',true).order('username');
+  const el=document.getElementById('cs-workers');
+  el.innerHTML=data?.map(e=>`<div class="worker-item"><input type="checkbox" class="worker-check" id="cw-${e.id}" data-id="${e.id}"><label for="cw-${e.id}" class="worker-name">${e.username}</label><select class="form-select" id="cwr-${e.id}" style="width:130px;padding:4px 8px;font-size:0.8rem"><option value="barman">🍹 Barman</option><option value="securite">🚪 Sécurité</option></select></div>`).join('')||'<p style="color:var(--text-dim)">Aucun employé</p>';
+  openModal('modal-create-soiree');
+}
+async function createSoiree(){
+  const nom=document.getElementById('cs-nom').value.trim(), date=document.getElementById('cs-date').value;
+  const heure=document.getElementById('cs-heure').value, prix=parseFloat(document.getElementById('cs-prix').value)||0;
+  const desc=document.getElementById('cs-desc').value.trim();
+  if(!nom||!date){toast('Nom et date requis','error');return;}
+  const {data:soiree,error}=await db.from('soirees_unicorn').insert({nom,date_soiree:date,heure_debut:heure,prix_entree:prix,description:desc,created_by:currentUser.id}).select().single();
+  if(error){toast('Erreur création soirée','error');return;}
+  const checks=document.querySelectorAll('.worker-check:checked'), assigns=[];
+  checks.forEach(c=>assigns.push({soiree_id:soiree.id,employee_id:c.dataset.id,role_soiree:document.getElementById('cwr-'+c.dataset.id).value}));
+  if(assigns.length) await db.from('assignations_unicorn').insert(assigns);
+  closeModal('modal-create-soiree'); toast('Soirée créée !','success');
+  loadSoireesAdmin(); loadSoireesForSelects();
+  document.getElementById('cs-nom').value=''; document.getElementById('cs-desc').value='';
+}
+async function openManageSoiree(soireeId,nom){
+  manageSoireeId=soireeId; document.getElementById('ms-title').textContent='⚙ '+nom;
+  document.getElementById('ms-content').innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  openModal('modal-manage-soiree'); await renderManageSoiree(soireeId,nom);
+}
+async function renderManageSoiree(soireeId,nom){
+  const [{data:assignations},{data:allEmployees},{data:services}]=await Promise.all([
+    db.from('assignations_unicorn').select('*,employees_unicorn(username)').eq('soiree_id',soireeId),
+    db.from('employees_unicorn').select('*').eq('is_active',true),
+    db.from('services_unicorn').select('*,employees_unicorn(username)').eq('soiree_id',soireeId)
+  ]);
+  const assignedIds=assignations?.map(a=>a.employee_id)||[];
+  const available=allEmployees?.filter(e=>!assignedIds.includes(e.id))||[];
+  document.getElementById('ms-content').innerHTML=`
+    <div style="margin-bottom:1.5rem"><h4 style="font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.8rem;font-family:'Josefin Sans',sans-serif">ÉQUIPE ASSIGNÉE</h4>
+    ${assignations?.length?assignations.map(a=>`<div class="worker-item" style="margin-bottom:0.5rem"><span class="worker-name">${a.employees_unicorn.username}</span><span class="role-badge rb-${a.role_soiree}">${a.role_soiree}</span><button class="btn-danger btn-sm" onclick="removeAssignation('${a.id}','${soireeId}','${esc(nom)}')">✕</button></div>`).join(''):'<p style="color:var(--text-dim);font-size:0.88rem">Aucun employé assigné</p>'}</div>
+    ${available.length?`<div style="margin-bottom:1.5rem"><h4 style="font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.8rem;font-family:'Josefin Sans',sans-serif">AJOUTER UN EMPLOYÉ</h4><div style="display:flex;gap:0.5rem;flex-wrap:wrap"><select class="form-select" id="aw-emp" style="flex:1">${available.map(e=>`<option value="${e.id}">${e.username}</option>`).join('')}</select><select class="form-select" id="aw-role" style="width:140px"><option value="barman">🍹 Barman</option><option value="securite">🚪 Sécurité</option></select><button class="btn-primary btn-sm" onclick="addAssignation('${soireeId}','${esc(nom)}')">+ Ajouter</button></div></div>`:''}
+    <div><h4 style="font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.8rem;font-family:'Josefin Sans',sans-serif">SERVICES (${services?.length||0})</h4>${services?.map(s=>`<div class="history-entry"><span>${s.employees_unicorn?.username||'—'}</span><span style="color:${s.statut==='en_cours'?'var(--uc-gold)':'var(--text-dim)'}">${s.statut==='en_cours'?'🟢 En cours':(s.duree_minutes||0)+' min'}</span></div>`).join('')||'<p style="color:var(--text-dim);font-size:0.88rem">Aucun service</p>'}</div>`;
+}
+async function removeAssignation(id,soireeId,nom){ await db.from('assignations_unicorn').delete().eq('id',id); await renderManageSoiree(soireeId,nom); }
+async function addAssignation(soireeId,nom){
+  const empId=document.getElementById('aw-emp').value, role=document.getElementById('aw-role').value;
+  if(!empId) return;
+  const {error}=await db.from('assignations_unicorn').insert({soiree_id:soireeId,employee_id:empId,role_soiree:role});
+  if(error){toast('Erreur (déjà assigné ?)','error');return;}
+  toast('Employé ajouté !','success'); await renderManageSoiree(soireeId,nom);
+}
+
+// ===== PATRON: EQUIPE =====
+async function loadEquipe(){
+  const {data}=await db.from('employees_unicorn').select('*').order('created_at');
+  const el=document.getElementById('equipe-list');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">👥</div><div>Aucun employé</div></div>';return;}
+  el.innerHTML=`<table class="data-table"><thead><tr><th>Nom</th><th>Permission</th><th>Statut</th><th>Actions</th></tr></thead><tbody>${data.map(e=>`<tr><td><strong>${e.username}</strong></td><td><span class="role-badge rb-${e.role}">${e.role==='patron'?'👑 Patron':'👤 Employé'}</span></td><td><span style="color:${e.is_active?'var(--uc-gold)':'var(--uc-rose)'}">${e.is_active?'✓ Actif':'✗ Inactif'}</span></td><td><button class="btn-danger btn-sm" onclick="toggleEmployee('${e.id}',${e.is_active})">${e.is_active?'Désactiver':'Activer'}</button></td></tr>`).join('')}</tbody></table>`;
+}
+async function createEmployee(){
+  const username=document.getElementById('emp-username').value.trim(), password=document.getElementById('emp-password').value, role=document.getElementById('emp-role').value;
+  if(!username||!password){toast('Remplis tous les champs','error');return;}
+  const {error}=await db.from('employees_unicorn').insert({username,password,role});
+  if(error){toast(error.message.includes('unique')?'Ce nom existe déjà':'Erreur','error');return;}
+  closeModal('modal-create-employee'); toast(`Employé ${username} créé !`,'success');
+  document.getElementById('emp-username').value=''; document.getElementById('emp-password').value=''; loadEquipe();
+}
+async function toggleEmployee(id,isActive){ await db.from('employees_unicorn').update({is_active:!isActive}).eq('id',id); toast('Mis à jour','success'); loadEquipe(); }
+
+// ===== PATRON: ANNONCES =====
+async function loadAnnoncesAdmin(){
+  const {data}=await db.from('annonces_unicorn').select('*').order('created_at',{ascending:false});
+  const el=document.getElementById('annonces-admin-list');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📣</div><div>Aucune annonce</div></div>';return;}
+  el.innerHTML=`<table class="data-table"><thead><tr><th>Titre</th><th>Type</th><th>Date</th><th>Statut</th><th>Actions</th></tr></thead><tbody>${data.map(a=>`<tr><td><strong>${a.titre}</strong></td><td>${a.type}</td><td style="color:var(--text-dim)">${a.date_event?fmtDate(a.date_event):'—'}</td><td><span style="color:${a.is_published?'var(--uc-gold)':'var(--text-dim)'}">${a.is_published?'✓ Publiée':'⏸ Brouillon'}</span></td><td style="display:flex;gap:0.4rem;flex-wrap:wrap"><button class="btn-outline btn-sm" onclick="toggleAnnonce('${a.id}',${a.is_published})">${a.is_published?'Dépublier':'Publier'}</button><button class="btn-danger btn-sm" onclick="deleteAnnonce('${a.id}')">✕</button></td></tr>`).join('')}</tbody></table>`;
+}
+async function createAnnonce(){
+  const titre=document.getElementById('ann-titre').value.trim(), type=document.getElementById('ann-type').value;
+  const date=document.getElementById('ann-date').value, contenu=document.getElementById('ann-contenu').value.trim();
+  const image=document.getElementById('ann-image').value.trim(), published=document.getElementById('ann-published').checked;
+  if(!titre||!contenu){toast('Titre et contenu requis','error');return;}
+  await db.from('annonces_unicorn').insert({titre,type,contenu,image_url:image||null,date_event:date||null,is_published:published,created_by:currentUser.id});
+  closeModal('modal-create-annonce'); toast('Annonce créée !','success'); loadAnnoncesAdmin(); loadPublicAnnonces();
+  document.getElementById('ann-titre').value=''; document.getElementById('ann-contenu').value='';
+}
+async function toggleAnnonce(id,current){ await db.from('annonces_unicorn').update({is_published:!current}).eq('id',id); loadAnnoncesAdmin(); loadPublicAnnonces(); }
+async function deleteAnnonce(id){ if(!confirm('Supprimer cette annonce ?')) return; await db.from('annonces_unicorn').delete().eq('id',id); loadAnnoncesAdmin(); loadPublicAnnonces(); }
+
+// ===== PATRON: PRODUITS =====
+const catLabels={all:'🦄 Tous',cocktail:'🍹 Cocktails',biere:'🍺 Bières',shot:'🥃 Shots',soft:'🥤 Softs',bouteille:'🍾 Bouteilles',autre:'📦 Autre'};
+async function loadProduitsAdmin(){
+  const {data}=await db.from('produits_unicorn').select('*').order('categorie');
+  const el=document.getElementById('produits-admin-list');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🍾</div><div>Aucun produit</div></div>';return;}
+  el.innerHTML=`<table class="data-table"><thead><tr><th></th><th>Nom</th><th>Catégorie</th><th>Prix</th><th>Actif</th><th>Actions</th></tr></thead><tbody>${data.map(p=>`<tr><td style="font-size:1.4rem">${p.emoji}</td><td><strong>${p.nom}</strong></td><td style="color:var(--text-dim)">${p.categorie}</td><td style="color:var(--uc-gold);font-weight:700">${parseFloat(p.prix).toFixed(2)} €</td><td><span style="color:${p.is_active?'var(--uc-gold)':'var(--text-dim)'}">${p.is_active?'✓':'✗'}</span></td><td><button class="btn-danger btn-sm" onclick="toggleProduit('${p.id}',${p.is_active})">${p.is_active?'Retirer':'Activer'}</button></td></tr>`).join('')}</tbody></table>`;
+}
+async function createProduit(){
+  const nom=document.getElementById('prod-nom').value.trim(), categorie=document.getElementById('prod-cat').value;
+  const prix=parseFloat(document.getElementById('prod-prix').value), emoji=document.getElementById('prod-emoji').value||'🦄';
+  if(!nom||isNaN(prix)){toast('Remplis tous les champs','error');return;}
+  await db.from('produits_unicorn').insert({nom,categorie,prix,emoji});
+  closeModal('modal-create-produit'); toast('Produit ajouté !','success'); loadProduitsAdmin();
+  document.getElementById('prod-nom').value=''; document.getElementById('prod-prix').value='';
+}
+async function toggleProduit(id,active){ await db.from('produits_unicorn').update({is_active:!active}).eq('id',id); loadProduitsAdmin(); }
+
+// ===== PATRON: ALBUMS =====
+async function loadAlbumsAdmin(){
+  const {data}=await db.from('albums_unicorn').select('*,soirees_unicorn(nom)').order('created_at',{ascending:false});
+  const el=document.getElementById('albums-admin-list');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📸</div><div>Aucun album</div></div>';return;}
+  el.innerHTML=`<table class="data-table"><thead><tr><th>Nom</th><th>Soirée</th><th>Visibilité</th><th>Actions</th></tr></thead><tbody>${data.map(a=>`<tr><td><strong>${a.nom}</strong></td><td style="color:var(--text-dim)">${a.soirees_unicorn?.nom||'—'}</td><td><span style="color:${a.is_public?'var(--uc-gold)':'var(--text-dim)'}">${a.is_public?'🌐 Public':'🔒 Privé'}</span></td><td style="display:flex;gap:0.4rem"><button class="btn-outline btn-sm" onclick="openAddPhotoModal('${a.id}','${esc(a.nom)}')">+ Photo</button><button class="btn-danger btn-sm" onclick="deleteAlbum('${a.id}')">✕</button></td></tr>`).join('')}</tbody></table>`;
+}
+async function createAlbum(){
+  const nom=document.getElementById('alb-nom').value.trim(), soiree=document.getElementById('alb-soiree').value, isPublic=document.getElementById('alb-public').checked;
+  if(!nom){toast('Nom requis','error');return;}
+  await db.from('albums_unicorn').insert({nom,soiree_id:soiree||null,is_public:isPublic});
+  closeModal('modal-create-album'); toast('Album créé !','success'); loadAlbumsAdmin(); loadPublicAlbums();
+  document.getElementById('alb-nom').value='';
+}
+async function deleteAlbum(id){ if(!confirm('Supprimer cet album ?')) return; await db.from('albums_unicorn').delete().eq('id',id); loadAlbumsAdmin(); loadPublicAlbums(); }
+function openAddPhotoModal(albumId,nom){ document.getElementById('photo-album-select').innerHTML=`<option value="${albumId}">${nom}</option>`; openModal('modal-add-photo'); }
+async function addPhoto(){
+  const albumId=document.getElementById('photo-album-select').value, url=document.getElementById('photo-url').value.trim(), caption=document.getElementById('photo-caption').value.trim();
+  if(!url){toast('URL requise','error');return;}
+  await db.from('photos_unicorn').insert({album_id:albumId,url,caption:caption||null,uploaded_by:currentUser.id});
+  closeModal('modal-add-photo'); toast('Photo ajoutée !','success'); document.getElementById('photo-url').value=''; document.getElementById('photo-caption').value=''; loadAlbumsAdmin();
+}
+
+// ===== RAPPORT =====
+async function loadRapport(soireeId){
+  if(!soireeId) return;
+  const el=document.getElementById('rapport-content'); el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  const [{data:s},{data:ent},{data:ven},{data:srv}]=await Promise.all([
+    db.from('soirees_unicorn').select('*').eq('id',soireeId).single(),
+    db.from('entrees_unicorn').select('*').eq('soiree_id',soireeId),
+    db.from('ventes_unicorn').select('*,produits_unicorn(nom,emoji)').eq('soiree_id',soireeId),
+    db.from('services_unicorn').select('*,employees_unicorn(username)').eq('soiree_id',soireeId)
+  ]);
+  const entrees=ent||[], ventes=ven||[], services=srv||[];
+  const caBar=ventes.filter(v=>v.methode_paiement!=='offert').reduce((s,v)=>s+parseFloat(v.total),0);
+  const caEntrees=entrees.filter(e=>e.type_entree!=='refusee').length*(s?.prix_entree||0);
+  const totalCA=caBar+caEntrees, totalEntrees=entrees.filter(e=>e.type_entree!=='refusee').length;
+  const totalMinutes=services.reduce((s,sv)=>s+(sv.duree_minutes||0),0);
+  const byProd={};
+  ventes.forEach(v=>{ const key=v.produit_id||v.note||'?'; if(!byProd[key]) byProd[key]={nom:v.produits_unicorn?.nom||v.note||'?',emoji:v.produits_unicorn?.emoji||'🦄',qte:0,total:0}; byProd[key].qte+=v.quantite; byProd[key].total+=parseFloat(v.total); });
+  el.innerHTML=`
+    <div class="rapport-grid">
+      <div class="rapport-card"><div class="rapport-value" style="color:var(--uc-gold)">${totalCA.toFixed(2)} €</div><div class="rapport-label">CA Total</div></div>
+      <div class="rapport-card"><div class="rapport-value" style="color:var(--uc-mauve)">${caBar.toFixed(2)} €</div><div class="rapport-label">CA Bar</div></div>
+      <div class="rapport-card"><div class="rapport-value" style="color:var(--uc-rose)">${totalEntrees}</div><div class="rapport-label">Entrées</div></div>
+      <div class="rapport-card"><div class="rapport-value" style="color:var(--uc-pink)">${entrees.filter(e=>e.type_entree==='vip').length}</div><div class="rapport-label">VIP</div></div>
+      <div class="rapport-card"><div class="rapport-value" style="color:#a0ffcc">${entrees.filter(e=>e.type_entree==='refusee').length}</div><div class="rapport-label">Refusées</div></div>
+      <div class="rapport-card"><div class="rapport-value" style="color:var(--uc-gold)">${ventes.length}</div><div class="rapport-label">Transactions</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1rem">
+      <div>
+        <h4 style="font-family:'Cinzel Decorative',serif;font-size:0.8rem;color:var(--uc-gold);margin-bottom:1rem;letter-spacing:2px">ÉQUIPE & PRIMES</h4>
+        ${services.map(sv=>{ const prime=((sv.duree_minutes||0)/60*15).toFixed(2); return `<div class="history-entry"><span>${sv.employees_unicorn?.username||'—'}</span><span style="color:${sv.statut==='en_cours'?'var(--uc-gold)':'var(--text-dim)'}">${sv.statut==='en_cours'?'🟢 En cours':`${sv.duree_minutes||0} min → ~${prime}€`}</span></div>`; }).join('')||'<p style="color:var(--text-dim);font-size:0.85rem">Aucun service</p>'}
+        <div style="margin-top:1rem;padding-top:0.8rem;border-top:1px solid rgba(255,215,0,0.15)"><div class="history-entry"><span style="color:var(--text-dim)">Total heures équipe</span><span style="color:var(--uc-gold);font-weight:700">${Math.floor(totalMinutes/60)}h${totalMinutes%60}m</span></div></div>
+      </div>
+      <div>
+        <h4 style="font-family:'Cinzel Decorative',serif;font-size:0.8rem;color:var(--uc-rose);margin-bottom:1rem;letter-spacing:2px">TOP PRODUITS</h4>
+        ${Object.values(byProd).sort((a,b)=>b.qte-a.qte).slice(0,8).map(p=>`<div class="history-entry"><span>${p.emoji} ${p.nom}</span><span style="color:var(--uc-gold)">${p.qte}x — ${p.total.toFixed(2)} €</span></div>`).join('')||'<p style="color:var(--text-dim);font-size:0.85rem">Aucune vente</p>'}
+      </div>
+    </div>`;
+}
+
+// ===== PUBLIC: ANNONCES =====
+async function loadPublicAnnonces(){
+  const {data}=await db.from('annonces_unicorn').select('*').eq('is_published',true).order('created_at',{ascending:false}).limit(6);
+  const el=document.getElementById('annonces-public');
+  const nextEvent=data?.find(a=>a.date_event&&new Date(a.date_event)>=new Date());
+  document.getElementById('hero-event-title').textContent=nextEvent?nextEvent.titre:'Aucun événement prévu';
+  document.getElementById('hero-event-date').textContent=nextEvent?'📅 '+fmtDate(nextEvent.date_event):'Reste à l\'écoute !';
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📣</div><div class="empty-state-text">Pas encore d\'annonces</div></div>';return;}
+  el.innerHTML=data.map(a=>`<div class="annonce-card">${a.image_url?`<img class="annonce-img" src="${a.image_url}" alt="${a.titre}" onerror="this.style.display='none'">`:`<div class="annonce-img-placeholder">${typeEmoji(a.type)}</div>`}<div class="annonce-body"><div class="annonce-type">${a.type.toUpperCase()}</div><div class="annonce-title">${a.titre}</div><div class="annonce-text">${a.contenu.substring(0,130)}${a.contenu.length>130?'...':''}</div>${a.date_event?`<div class="annonce-date">📅 ${fmtDate(a.date_event)}</div>`:''}</div></div>`).join('');
+}
+async function loadPublicSoirees(){
+  const {data}=await db.from('soirees_unicorn').select('*').order('date_soiree',{ascending:false});
+  const el=document.getElementById('soirees-public');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🎉</div><div class="empty-state-text">Aucune soirée annoncée</div></div>';return;}
+  el.innerHTML=data.map(s=>`<div class="annonce-card"><div class="annonce-img-placeholder" style="background:var(--grad-fantasy)">✨</div><div class="annonce-body"><div class="annonce-type">${statusLabel(s.statut)}</div><div class="annonce-title">${s.nom}</div><div class="annonce-text">${s.description||'Une soirée inoubliable au Vanilla Unicorn !'}</div><div class="annonce-date">📅 ${fmtDate(s.date_soiree)} à ${s.heure_debut||'22:00'}${s.prix_entree>0?' — 💶 '+s.prix_entree+'€ / entrée':' — 🆓 Entrée gratuite'}</div></div></div>`).join('');
+}
+async function loadPublicMenu(filterCat){
+  if(filterCat!==undefined) currentMenuCat=filterCat;
+  const {data}=await db.from('produits_unicorn').select('*').eq('is_active',true).order('categorie');
+  const allProduits=data||[];
+  if(!allProduits.length){ document.getElementById('menu-categories').innerHTML=''; document.getElementById('menu-grid').innerHTML=`<div class="empty-state"><div class="empty-state-icon">🍾</div><div class="empty-state-text">Le menu est en cours de préparation…</div></div>`; return; }
+  const cats=['all',...new Set(allProduits.map(p=>p.categorie))];
+  document.getElementById('menu-categories').innerHTML=cats.map(c=>`<button class="cat-btn ${c===currentMenuCat?'active':''}" onclick="loadPublicMenu('${c}')">${catLabels[c]||c}</button>`).join('');
+  const filtered=currentMenuCat==='all'?allProduits:allProduits.filter(p=>p.categorie===currentMenuCat);
+  const grouped={}; filtered.forEach(p=>{ if(!grouped[p.categorie]) grouped[p.categorie]=[]; grouped[p.categorie].push(p); });
+  document.getElementById('menu-grid').innerHTML=Object.entries(grouped).map(([cat,items])=>`<div class="menu-section-title">${catLabels[cat]||cat}</div><div class="menu-grid-items">${items.map(p=>`<div class="menu-card"><div class="menu-card-emoji">${p.emoji}</div><div class="menu-card-nom">${p.nom}</div><div class="menu-card-prix">${parseFloat(p.prix).toFixed(2)} €</div></div>`).join('')}</div>`).join('');
+}
+async function loadPublicAlbums(){
+  const {data}=await db.from('albums_unicorn').select('*').eq('is_public',true).order('created_at',{ascending:false});
+  const el=document.getElementById('albums-public');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📸</div><div class="empty-state-text">Aucun album photo</div></div>';return;}
+  el.innerHTML=data.map(a=>`<div class="album-card" onclick="openAlbum('${a.id}','${esc(a.nom)}')"><div class="album-cover">📸</div><div class="album-info"><div class="album-name">${a.nom}</div><div class="album-count">Cliquer pour voir les photos</div></div></div>`).join('');
+}
+async function openAlbum(albumId,nom){
+  document.getElementById('galerie-albums-view').style.display='none'; document.getElementById('galerie-photos-view').style.display='block';
+  document.getElementById('album-current-name').textContent=nom;
+  const {data}=await db.from('photos_unicorn').select('*').eq('album_id',albumId).order('created_at');
+  const el=document.getElementById('photos-public');
+  if(!data?.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📷</div><div>Cet album est vide</div></div>';return;}
+  el.innerHTML=data.map(p=>`<div class="photo-item"><img src="${p.url}" alt="${p.caption||''}" loading="lazy" onerror="this.parentElement.innerHTML='<div style=padding:2rem;text-align:center;color:var(--text-dim)>❌</div>'"></div>`).join('');
+}
+function showAlbumsView(){ document.getElementById('galerie-albums-view').style.display='block'; document.getElementById('galerie-photos-view').style.display='none'; }
+
+// ===== UTILS =====
+function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}); }
+function fmtTime(d){ if(!d) return '—'; return new Date(d).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDuration(ms){ const s=Math.floor(ms/1000); return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
+function typeEmoji(t){ return t==='soiree'?'🎉':t==='promo'?'💥':t==='urgent'?'🚨':'ℹ️'; }
+function esc(str){ return (str||'').replace(/'/g,"\\'"); }
+
+document.getElementById('login-password').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+loadPublicAnnonces();
+</script>
+</body>
+</html>
